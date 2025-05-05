@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* OPTIONAL: Global Styles */
+:root {
+  /* Custom Variables */
+}
+
+/* Animation keyframes outside of any nested selectors */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Body styles */
+body {
+  @apply bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white min-h-screen;
+}
+
+/* Editor styles */
+[data-color-mode="dark"] {
+  --color-canvas-default: #1a202c;
+  --color-canvas-subtle: #2d3748;
+  --color-border-default: #4a5568;
+  --color-fg-default: #e2e8f0;
+}
+
+.wmde-markdown,
+.w-md-editor-preview {
+  background-color: #1a202c !important;
+  color: #e2e8f0 !important;
+}
+
+.w-md-editor-text-input,
+.w-md-editor-text-pre > code,
+.w-md-editor-text-pre {
+  color: #e2e8f0 !important;
+}
+
+.w-md-editor-toolbar {
+  background-color: #2d3748 !important;
+  border-bottom: 1px solid #4a5568 !important;
+}
+
+/* KEINE Display-Styles auf body setzen! Tailwind regelt das besser */

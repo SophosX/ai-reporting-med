@@ -1,0 +1,52 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from ..core.database import get_db
+from ..models.user_model import User
+from ..core.security import get_password_hash, verify_password, create_access_token
+from ..schemas.user_schemas import UserCreate, UserLogin, UserOut
+from datetime import timedelta
+from ..core.config import settings
+
+router = APIRouter()
+
+@router.post("/register", response_model=UserOut)
+def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
+    # Prüfen, ob Email bereits existiert
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already in use.")
+
+    hashed_pw = get_password_hash(user_data.password)
+    new_user = User(
+        username=user_data.username,
+        email=user_data.email,
+        password=hashed_pw
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Return only user information without token
+    return new_user
+
+@router.post("/login")
+def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
+    print("user")
+    identifier = login_data.identifier
+    # Entscheide anhand eines einfachen Heuristik: Enthält der Identifier ein "@"? Dann als Email behandeln.
+    if "@" in identifier:
+        user = db.query(User).filter(User.email == identifier).first()
+    else:
+        user = db.query(User).filter(User.username == identifier).first()
+    
+    print("user",user)
+
+    if not user or not verify_password(login_data.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer", "user_id": user.id}
