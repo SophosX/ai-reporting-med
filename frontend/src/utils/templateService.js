@@ -3,7 +3,7 @@ import API_URL from "./apiConfig";
 
 export const fetchAllTemplates = async () => {
   try {
-    const response = await authenticatedFetch(`${API_URL}/templates`);
+    const response = await authenticatedFetch(`${API_URL}/templates/`);
     if (!response.ok) {
       throw new Error("Failed to fetch templates");
     }
