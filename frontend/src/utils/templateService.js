@@ -16,7 +16,7 @@ export const fetchAllTemplates = async () => {
 
 export const fetchUserTemplates = async () => {
   try {
-    const response = await authenticatedFetch(`${API_URL}/user-templates`);
+    const response = await authenticatedFetch(`${API_URL}/user-templates/`);
     if (!response.ok) {
       throw new Error("Failed to fetch user templates");
     }
@@ -35,7 +35,7 @@ export const createUserTemplate = async (templateData) => {
       delete dataToSend.template_id;
     }
 
-    const response = await authenticatedFetch(`${API_URL}/user-templates`, {
+    const response = await authenticatedFetch(`${API_URL}/user-templates/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,7 +59,7 @@ export const createUserTemplate = async (templateData) => {
 export const updateUserTemplate = async (templateId, templateData) => {
   try {
     const response = await authenticatedFetch(
-      `${API_URL}/user-templates/${templateId}`,
+      `${API_URL}/user-templates/${templateId}/`,
       {
         method: "PUT",
         headers: {
@@ -85,7 +85,7 @@ export const updateUserTemplate = async (templateId, templateData) => {
 export const deleteUserTemplate = async (templateId) => {
   try {
     const response = await authenticatedFetch(
-      `${API_URL}/user-templates/${templateId}`,
+      `${API_URL}/user-templates/${templateId}/`,
       {
         method: "DELETE",
       }
