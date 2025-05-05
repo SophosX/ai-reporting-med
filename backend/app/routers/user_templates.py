@@ -70,7 +70,7 @@ async def get_user_templates(
     templates = db.query(UserTemplate).filter(UserTemplate.user_id == current_user_id).all()
     return templates
 
-@router.get("/{template_id}", response_model=UserTemplateOut)
+@router.get("/{template_id}/", response_model=UserTemplateOut)
 async def get_template(
     template_id: int,
     db: Session = Depends(get_db),
@@ -87,7 +87,7 @@ async def get_template(
     
     return template
 
-@router.put("/{template_id}", response_model=UserTemplateOut)
+@router.put("/{template_id}/", response_model=UserTemplateOut)
 async def update_template(
     template_id: int,
     template_data: UserTemplateUpdate,
@@ -114,7 +114,7 @@ async def update_template(
     
     return template
 
-@router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{template_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_template(
     template_id: int,
     db: Session = Depends(get_db),
