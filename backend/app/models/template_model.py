@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, String, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, Text, String, DateTime, ForeignKey, func, Boolean
 from sqlalchemy.orm import relationship
 from ..core.database import Base
 
@@ -12,6 +12,10 @@ class UserTemplate(Base):
     text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Fields for default template overrides
+    is_default_override = Column(Boolean, default=False)
+    default_template_id = Column(String(255), nullable=True)
 
     # Relationship back to user
     user = relationship("User", back_populates="templates") 

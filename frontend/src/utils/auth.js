@@ -38,6 +38,9 @@ export const logout = () => {
   localStorage.removeItem("user_id");
 };
 
+// To prevent multiple session expired messages
+let isRedirecting = false;
+
 /**
  * Makes an authenticated API request, handling token expiration
  * @param {string} url - API endpoint URL
@@ -66,8 +69,17 @@ export const authenticatedFetch = async (url, options = {}) => {
   // If we get a 401 (Unauthorized), it means our token is invalid or expired
   if (response.status === 401) {
     logout();
-    window.location.href = "/login";
-    throw new Error("Session expired. Please login again.");
+
+    // Prevent multiple redirects and messages
+    if (!isRedirecting) {
+      isRedirecting = true;
+      // Only redirect if we're not already on the login page
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/login";
+        throw new Error("Session expired. Please login again.");
+      }
+    }
+    throw new Error("Authentication required");
   }
 
   return response;

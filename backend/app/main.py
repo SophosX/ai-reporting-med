@@ -5,13 +5,43 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from .core.config import settings
 import os
+import importlib.util
+import sys
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def run_migrations():
+    """Run database migration scripts"""
+    try:
+        # Path to the migration script
+        migration_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "migration_add_override_columns.py"
+        )
+        
+        if os.path.exists(migration_path):
+            logger.info(f"Running migration script: {migration_path}")
+            
+            # Load and run the migration script
+            spec = importlib.util.spec_from_file_location("migration", migration_path)
+            migration = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(migration)
+            
+            # Run the migration
+            migration.run_migration()
+            logger.info("Migration completed")
+        else:
+            logger.info("No migration script found")
+    except Exception as e:
+        logger.error(f"Error running migrations: {e}")
+
 def create_app():
     app = FastAPI(title=settings.PROJECT_NAME + " API")
+
+    # Run migrations before creating tables
+    run_migrations()
 
     # Automatically create database tables (demo)
     logger.info("Creating database tables...")

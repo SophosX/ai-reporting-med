@@ -8,6 +8,7 @@ import {
   FaSave,
   FaUndo,
   FaUserEdit,
+  FaUndoAlt,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useTemplate } from "../context/TemplateContext";
@@ -16,6 +17,8 @@ import {
   createUserTemplate,
   updateUserTemplate,
   deleteUserTemplate,
+  updateDefaultTemplate,
+  deleteDefaultTemplate,
 } from "../utils/templateService";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
@@ -28,6 +31,8 @@ function TemplatesPage() {
     loading,
     error,
     refreshTemplates,
+    loadTemplates,
+    initialized,
   } = useTemplate();
   const navigate = useNavigate();
 
@@ -43,6 +48,11 @@ function TemplatesPage() {
     title: "",
     text: "",
   });
+
+  // Load templates when component mounts
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   const handleSelect = (tplId) => {
     setSelectedTemplateId(tplId);
@@ -94,7 +104,13 @@ function TemplatesPage() {
   };
 
   const handleStartEditing = (template) => {
-    setIsEditing(template.template_db_id);
+    // For default templates, use the template ID directly
+    // For user templates, use the template_db_id property
+    const editId = template.user_created
+      ? template.template_db_id
+      : template.id;
+
+    setIsEditing(editId);
     setIsCreating(false);
     setEditedTemplate({
       title: template.title,
@@ -110,7 +126,12 @@ function TemplatesPage() {
     });
   };
 
-  const handleEditSubmit = async (e, templateId) => {
+  const handleEditSubmit = async (
+    e,
+    templateId,
+    isDefaultTemplate = false,
+    defaultTemplateId = null
+  ) => {
     e.preventDefault();
     try {
       if (!editedTemplate.title || !editedTemplate.text) {
@@ -118,12 +139,22 @@ function TemplatesPage() {
         return;
       }
 
-      await updateUserTemplate(templateId, {
-        title: editedTemplate.title,
-        text: editedTemplate.text,
-      });
+      if (isDefaultTemplate) {
+        // Handle default template update
+        await updateDefaultTemplate(defaultTemplateId, {
+          title: editedTemplate.title,
+          text: editedTemplate.text,
+        });
+        toast.success("Template erfolgreich aktualisiert");
+      } else {
+        // Handle user template update
+        await updateUserTemplate(templateId, {
+          title: editedTemplate.title,
+          text: editedTemplate.text,
+        });
+        toast.success("Template erfolgreich aktualisiert");
+      }
 
-      toast.success("Template erfolgreich aktualisiert");
       setIsEditing(null);
       refreshTemplates();
     } catch (err) {
@@ -137,6 +168,7 @@ function TemplatesPage() {
     }
 
     try {
+      // Only handle user template deletion
       await deleteUserTemplate(templateId);
       toast.success("Template erfolgreich gelöscht");
       refreshTemplates();
@@ -166,14 +198,18 @@ function TemplatesPage() {
   }
 
   // Separate default and user templates
-  const defaultTemplates = templates.filter((t) => !t.user_created);
-  const userTemplates = templates.filter((t) => t.user_created);
+  const defaultTemplates = templates.filter(
+    (t) => !t.user_created || t.is_default_override
+  );
+  const userTemplates = templates.filter(
+    (t) => t.user_created && !t.is_default_override
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 text-white">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-        <FaBookMedical className="text-2xl text-purple-400" />
+          <FaBookMedical className="text-2xl text-purple-400" />
           <h2 className="text-3xl font-bold text-purple-400">
             Radiologie Templates
           </h2>
@@ -417,38 +453,127 @@ function TemplatesPage() {
           <FaBookMedical className="mr-2" />
           Standard Templates
         </h3>
-      <div className="space-y-6">
+        <div className="space-y-6">
           {defaultTemplates.map((tpl) => {
             const isSelected = tpl.id === selectedTemplateId;
-          return (
-            <div
-              key={tpl.id}
-              className={`bg-gradient-to-br from-gray-800 to-gray-900 border rounded-xl p-6 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-300
+            const isCurrentlyEditing = isEditing === tpl.id;
+            // Check if this is an override of a default template
+            const isOverride = tpl.is_default_override === true;
+
+            return (
+              <div
+                key={tpl.id}
+                className={`bg-gradient-to-br from-gray-800 to-gray-900 border rounded-xl p-6 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-300
                   ${
                     isSelected
                       ? "border-purple-500 shadow-lg shadow-purple-500/20"
                       : "border-gray-700/50"
                   }
-              `}
-            >
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
-                  {tpl.title}
-                </h3>
-              <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
-                {tpl.text}
-              </pre>
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => handleSelect(tpl.id)}
-                  className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-                >
-                  <span>Mit diesem Template fortfahren</span>
-                  <FaArrowRight />
-                </button>
+                  ${isOverride ? "border-l-4 border-l-blue-500" : ""}
+                `}
+              >
+                {isCurrentlyEditing ? (
+                  <div className="mb-4">
+                    <form
+                      onSubmit={(e) => handleEditSubmit(e, null, true, tpl.id)}
+                    >
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Titel *
+                        </label>
+                        <input
+                          type="text"
+                          value={editedTemplate.title}
+                          onChange={(e) =>
+                            setEditedTemplate({
+                              ...editedTemplate,
+                              title: e.target.value,
+                            })
+                          }
+                          className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          required
+                        />
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Template Text *
+                        </label>
+                        <div data-color-mode="dark">
+                          <MDEditor
+                            value={editedTemplate.text}
+                            onChange={(value) =>
+                              setEditedTemplate({
+                                ...editedTemplate,
+                                text: value || "",
+                              })
+                            }
+                            height={300}
+                            preview="edit"
+                            previewOptions={{
+                              rehypePlugins: [[rehypeSanitize]],
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={handleCancelEdit}
+                          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center space-x-1"
+                        >
+                          <FaUndo className="text-sm" />
+                          <span>Abbrechen</span>
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center space-x-1"
+                        >
+                          <FaSave className="text-sm" />
+                          <span>Aktualisieren</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="text-xl font-semibold text-purple-300 mb-1">
+                          {tpl.title}
+                        </h3>
+                        {isOverride && (
+                          <div className="text-xs text-blue-400 mb-2 flex items-center">
+                            <span className="mr-1">●</span> Angepasste Version
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleStartEditing(tpl)}
+                          className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-blue-400"
+                          title="Template bearbeiten"
+                        >
+                          <FaEdit />
+                        </button>
+                      </div>
+                    </div>
+                    <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
+                      {tpl.text}
+                    </pre>
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        onClick={() => handleSelect(tpl.id)}
+                        className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                      >
+                        <span>Mit diesem Template fortfahren</span>
+                        <FaArrowRight />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
             );
-        })}
+          })}
         </div>
       </div>
     </div>

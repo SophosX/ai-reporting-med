@@ -15,72 +15,80 @@ import { TemplateProvider } from "./context/TemplateContext";
 
 function App() {
   return (
-    <TemplateProvider>
-      <BrowserRouter>
-        <div className="pt-20 min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-          <Navbar />
-          <Routes>
-            {/* Öffentliche Routen: Login / Register */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+    <BrowserRouter>
+      <div className="pt-20 min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+        <Navbar />
+        <Routes>
+          {/* Public routes - no template provider needed */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-            {/* Geschützte Routen: Nur mit Token erreichbar */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
+          {/* Protected routes with TemplateProvider */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <TemplateProvider>
                   <HomePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/templates"
-              element={
-                <ProtectedRoute>
-                  <TemplatesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reports/new"
-              element={
-                <ProtectedRoute>
-                  <NewReportPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reports/history"
-              element={
-                <ProtectedRoute>
-                  <ReportsHistoryPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reports/:reportId"
-              element={
-                <ProtectedRoute>
-                  <ReportDetailPage />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-          {/* Hier kommt der Toast-Container hin */}
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="dark"
+                </TemplateProvider>
+              </ProtectedRoute>
+            }
           />
-        </div>
-      </BrowserRouter>
-    </TemplateProvider>
+          <Route
+            path="/templates"
+            element={
+              <ProtectedRoute>
+                <TemplateProvider>
+                  <TemplatesPage />
+                </TemplateProvider>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports/new"
+            element={
+              <ProtectedRoute>
+                <TemplateProvider>
+                  <NewReportPage />
+                </TemplateProvider>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports/history"
+            element={
+              <ProtectedRoute>
+                <TemplateProvider>
+                  <ReportsHistoryPage />
+                </TemplateProvider>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports/:reportId"
+            element={
+              <ProtectedRoute>
+                <TemplateProvider>
+                  <ReportDetailPage />
+                </TemplateProvider>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+        {/* Toast container */}
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
+      </div>
+    </BrowserRouter>
   );
 }
 

@@ -6,11 +6,17 @@ class UserTemplateBase(BaseModel):
     title: str
     template_id: Optional[str] = None
     text: str
+    is_default_override: bool = False
+    default_template_id: Optional[str] = None
 
 class UserTemplateCreate(UserTemplateBase):
     pass
 
 class UserTemplateUpdate(BaseModel):
+    title: Optional[str] = None
+    text: Optional[str] = None
+
+class DefaultTemplateOverride(BaseModel):
     title: Optional[str] = None
     text: Optional[str] = None
 

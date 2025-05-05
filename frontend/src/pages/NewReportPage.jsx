@@ -20,6 +20,7 @@ function NewReportPage() {
     setSelectedTemplateId,
     templates,
     loading: templatesLoading,
+    loadTemplates,
   } = useTemplate();
   const [inputText, setInputText] = useState("");
   const [reportText, setReportText] = useState("");
@@ -42,13 +43,16 @@ function NewReportPage() {
 
   // Load template when component mounts or when selectedTemplateId changes
   useEffect(() => {
+    // Load templates if they're not already loaded
+    loadTemplates();
+
     if (selectedTemplateId && templates.length > 0) {
       const found = templates.find((t) => t.id === selectedTemplateId);
       if (found) {
         toast.info(`Template "${found.title}" geladen`);
       }
     }
-  }, [selectedTemplateId, templates]);
+  }, [selectedTemplateId, templates, loadTemplates]);
 
   const handleTemplateChange = (e) => {
     const tplId = e.target.value;
@@ -96,9 +100,9 @@ function NewReportPage() {
       setReportVisible(true);
       toast.success("Report successfully created");
 
-      // Navigate to home page after a short delay to show the success message
+      // Navigate to the created report page instead of the home page
       setTimeout(() => {
-        navigate("/");
+        navigate(`/reports/${data.id}`);
       }, 1500);
     } catch (error) {
       console.error("Error creating report:", error);

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import datetime
 
 class ReportCreate(BaseModel):
     input_text: str
@@ -14,6 +15,7 @@ class ReportOut(BaseModel):
     id: int
     input_text: str
     report_text: str
+    created_at: Optional[datetime] = None
 
     class Config:
         orm_mode = True
