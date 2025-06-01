@@ -7,6 +7,8 @@ from .core.config import settings
 import os
 import importlib.util
 import sys
+from .core.init_db import init_db
+from .core.database import get_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -55,6 +57,13 @@ def create_app():
     except Exception as e:
         logger.error(f"Error creating database tables: {e}")
 
+    # Initialize database with default data
+    try:
+        db = next(get_db())
+        init_db(db)
+    except Exception as e:
+        logger.error(f"Error initializing database: {e}")
+
     # Read allowed origins from environment variable, or use defaults
     cors_origins_env = os.getenv("CORS_ORIGINS", "")
     # If CORS_ORIGINS is set and not empty, parse it as a comma-separated list
@@ -90,3 +99,7 @@ def create_app():
     return app
 
 app = create_app()
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the Medical Report Generator API"}

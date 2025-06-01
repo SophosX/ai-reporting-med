@@ -63,84 +63,38 @@ async def update_template(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Update a template - creates a user override for default templates"""
-    # First check if the template exists
-    template = get_template_by_id(template_id, db=db, user_id=current_user_id)
+    """Update a template"""
+    # Get the template
+    template = db.query(UserTemplate).filter(
+        UserTemplate.template_id == template_id
+    ).first()
+    
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     
-    # If it's a user template, handle it directly
-    if template.get("user_created", False):
-        # If it's a user template but not an override of this template, raise error
-        if template.get("is_default_override", False) and template.get("default_template_id") != template_id:
-            raise HTTPException(
-                status_code=400, 
-                detail="This is an override of a different template"
-            )
-        
-        # Update the user template
-        user_template = db.query(UserTemplate).filter(
-            UserTemplate.id == template.get("template_db_id")
-        ).first()
-        
-        if not user_template:
-            raise HTTPException(status_code=404, detail="User template not found")
-        
-        if template_data.title is not None:
-            user_template.title = template_data.title
-        
-        if template_data.text is not None:
-            user_template.text = template_data.text
-        
+    # Update the template
+    if template_data.title is not None:
+        template.title = template_data.title
+    
+    if template_data.text is not None:
+        template.text = template_data.text
+    
+    try:
         db.commit()
-        db.refresh(user_template)
+        db.refresh(template)
         
         return {
-            "id": user_template.template_id,
-            "title": user_template.title,
-            "text": user_template.text,
-            "user_created": True,
-            "is_default_override": user_template.is_default_override,
-            "template_db_id": user_template.id,
-            "original_default_id": user_template.default_template_id if user_template.is_default_override else None
+            "id": template.template_id,
+            "title": template.title,
+            "text": template.text,
+            "user_created": template.user_id != 1,
+            "is_default_override": template.is_default_override,
+            "template_db_id": template.id,
+            "default_template_id": template.default_template_id if template.is_default_override else None
         }
-    
-    # If it's a default template, create an override
-    # This is a redirect to the override endpoint
-    override_response = await override_default_template(
-        template_id=template_id,
-        template_data=template_data,
-        db=db,
-        current_user_id=current_user_id
-    )
-    
-    # Then update it if needed
-    if (template_data.title and override_response["title"] != template_data.title) or \
-       (template_data.text and override_response["text"] != template_data.text):
-        user_template = db.query(UserTemplate).filter(
-            UserTemplate.id == override_response["template_db_id"]
-        ).first()
-        
-        if template_data.title is not None:
-            user_template.title = template_data.title
-        
-        if template_data.text is not None:
-            user_template.text = template_data.text
-        
-        db.commit()
-        db.refresh(user_template)
-        
-        return {
-            "id": user_template.template_id,
-            "title": user_template.title,
-            "text": user_template.text,
-            "user_created": True,
-            "is_default_override": True,
-            "template_db_id": user_template.id,
-            "original_default_id": user_template.default_template_id
-        }
-    
-    return override_response
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update template: {str(e)}")
 
 @router.delete("/{template_id}")
 async def remove_template(
