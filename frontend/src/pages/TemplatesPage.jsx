@@ -557,9 +557,14 @@ function TemplatesPage() {
                         </button>
                       </div>
                     </div>
-                    <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
-                      {tpl.text}
-                    </pre>
+                    <div className="text-sm text-gray-300 whitespace-pre-wrap">
+                      <div data-color-mode="dark">
+                        <MDEditor.Markdown
+                          source={tpl.text}
+                          rehypePlugins={[[rehypeSanitize]]}
+                        />
+                      </div>
+                    </div>
                     <div className="mt-4 flex justify-end">
                       <button
                         onClick={() => handleSelect(tpl.id)}

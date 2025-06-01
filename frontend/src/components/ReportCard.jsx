@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FaFilePdf,
   FaTrashAlt,
@@ -9,6 +9,8 @@ import {
   FaSave,
   FaUndo,
   FaCheck,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import MDEditor from "@uiw/react-md-editor";
@@ -16,6 +18,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { Link, useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
+import * as diff from 'diff';
 
 /**
  * ReportCard component for displaying a medical report
@@ -30,7 +33,34 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   const [editedReportText, setEditedReportText] = useState(
     report?.report_text || ""
   );
+  const [showDiff, setShowDiff] = useState(false);
+  const [templateText, setTemplateText] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch template text if report has a template
+    const fetchTemplate = async () => {
+      console.log("Report template_id:", report?.template_id); // Debug
+      if (report?.template_id) {
+        try {
+          const response = await authenticatedFetch(
+            `${API_URL}/templates/${report.template_id}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Template data:", data); // Debug
+            setTemplateText(data.text);
+          } else {
+            console.error("Failed to fetch template:", response.status); // Debug
+          }
+        } catch (err) {
+          console.error("Error fetching template:", err);
+        }
+      }
+    };
+
+    fetchTemplate();
+  }, [report?.template_id]);
 
   const formatDate = (isoString) => {
     if (!isoString) return { date: "Invalid Date", time: "" };
@@ -175,6 +205,27 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
     setEditedReportText(report.report_text);
   };
 
+  const renderDiff = (text1, text2) => {
+    if (!text1 || !text2) return null;
+
+    const differences = diff.diffWords(text1, text2);
+    return differences.map((part, index) => {
+      let className = "";
+      if (part.added) {
+        className = "bg-green-500/20 text-green-300";
+      } else if (part.removed) {
+        className = "bg-red-500/20 text-red-300 line-through";
+      } else if (part.value.trim() !== "") {
+        className = "text-gray-300";
+      }
+      return (
+        <span key={index} className={className}>
+          {part.value}
+        </span>
+      );
+    });
+  };
+
   if (!report) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 text-white">
@@ -194,6 +245,15 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
           </span>
         </div>
         <div className="flex items-center space-x-2">
+          {console.log("Template text available:", !!templateText)} {/* Debug */}
+          {console.log("Show diff state:", showDiff)} {/* Debug */}
+          <button
+            onClick={() => setShowDiff(!showDiff)}
+            className="p-2 hover:bg-purple-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-purple-400"
+            title={showDiff ? "Differenz ausblenden" : "Differenz anzeigen"}
+          >
+            {showDiff ? <FaEyeSlash /> : <FaEye />}
+          </button>
           <button
             title="PDF herunterladen"
             onClick={handleDownloadPdf}
@@ -249,7 +309,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
 
       {/* Generated Report Section */}
       <div className="bg-gray-800/50 rounded-lg p-4">
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-green-400 flex items-center">
             <FaFileMedical className="mr-2" />
             Generierter Bericht
@@ -323,6 +383,34 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
             </div>
           )}
         </div>
+
+        {/* Diff View */}
+        {showDiff && (
+          <div className="mt-6 pt-6 border-t border-gray-700/50">
+            <h4 className="text-lg font-semibold text-purple-400 mb-4">
+              Vergleich mit Template
+            </h4>
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <div className="prose prose-invert max-w-none">
+                {renderDiff(report.template_text || "", report.report_text)}
+              </div>
+            </div>
+            <div className="mt-4 flex items-center space-x-4 text-sm text-gray-400">
+              <div className="flex items-center">
+                <span className="w-3 h-3 bg-green-500/20 rounded-full mr-2"></span>
+                <span>Hinzugefügt</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-3 h-3 bg-red-500/20 rounded-full mr-2"></span>
+                <span>Entfernt</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-3 h-3 bg-gray-500/20 rounded-full mr-2"></span>
+                <span>Unverändert</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

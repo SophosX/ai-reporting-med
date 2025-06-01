@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaSync, FaArrowLeft } from "react-icons/fa";
+import { FaSync, FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { authenticatedFetch } from "../utils/auth";
 import ReportCard from "../components/ReportCard";
 import API_URL from "../utils/apiConfig";
+import * as diff from 'diff';
 
 function ReportDetailPage() {
   const { reportId } = useParams();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDiff, setShowDiff] = useState(false);
+  const [templateText, setTemplateText] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,6 +32,17 @@ function ReportDetailPage() {
 
         const data = await response.json();
         setReport(data);
+
+        // If the report has a template, fetch it
+        if (data.template_id) {
+          const templateResponse = await authenticatedFetch(
+            `${API_URL}/templates/${data.template_id}`
+          );
+          if (templateResponse.ok) {
+            const templateData = await templateResponse.json();
+            setTemplateText(templateData.text);
+          }
+        }
       } catch (err) {
         console.error("Error fetching report:", err);
         setError(err.message);
@@ -49,6 +63,27 @@ function ReportDetailPage() {
 
   const handleReportUpdate = (updatedReport) => {
     setReport(updatedReport);
+  };
+
+  const renderDiff = (text1, text2) => {
+    if (!text1 || !text2) return null;
+
+    const differences = diff.diffWords(text1, text2);
+    return differences.map((part, index) => {
+      let className = "";
+      if (part.added) {
+        className = "bg-green-500/20 text-green-300";
+      } else if (part.removed) {
+        className = "bg-red-500/20 text-red-300 line-through";
+      } else if (part.value.trim() !== "") {
+        className = "text-gray-300";
+      }
+      return (
+        <span key={index} className={className}>
+          {part.value}
+        </span>
+      );
+    });
   };
 
   if (loading) {
@@ -80,24 +115,64 @@ function ReportDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 text-white">
-      <button
-        onClick={handleGoBack}
-        className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 mb-6"
-      >
-        <FaArrowLeft />
-        <span>Zurück zu den Berichten</span>
-      </button>
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={handleGoBack}
+          className="flex items-center space-x-2 text-blue-400 hover:text-blue-300"
+        >
+          <FaArrowLeft />
+          <span>Zurück zu den Berichten</span>
+        </button>
+        {templateText && (
+          <button
+            onClick={() => setShowDiff(!showDiff)}
+            className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+          >
+            {showDiff ? <FaEyeSlash /> : <FaEye />}
+            <span>{showDiff ? "Differenz ausblenden" : "Differenz anzeigen"}</span>
+          </button>
+        )}
+      </div>
 
       <h2 className="text-3xl font-bold text-blue-400 mb-6">
         Bericht #{reportId}
       </h2>
 
       {report ? (
-        <ReportCard
-          report={report}
-          isDetailView={true}
-          onUpdate={handleReportUpdate}
-        />
+        <div className="space-y-6">
+          <ReportCard
+            report={report}
+            isDetailView={true}
+            onUpdate={handleReportUpdate}
+          />
+          
+          {showDiff && templateText && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-purple-500/40">
+              <h3 className="text-xl font-semibold text-purple-300 mb-4">
+                Vergleich mit Template
+              </h3>
+              <div className="bg-gray-900 rounded-lg p-4">
+                <div className="prose prose-invert max-w-none">
+                  {renderDiff(templateText, report.report_text)}
+                </div>
+              </div>
+              <div className="mt-4 flex items-center space-x-4 text-sm text-gray-400">
+                <div className="flex items-center">
+                  <span className="w-3 h-3 bg-green-500/20 rounded-full mr-2"></span>
+                  <span>Hinzugefügt</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-3 h-3 bg-red-500/20 rounded-full mr-2"></span>
+                  <span>Entfernt</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-3 h-3 bg-gray-500/20 rounded-full mr-2"></span>
+                  <span>Unverändert</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="bg-gray-800 rounded-xl p-6">
           <p>Bericht nicht gefunden</p>
