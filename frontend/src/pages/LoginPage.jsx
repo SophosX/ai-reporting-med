@@ -78,7 +78,7 @@ function LoginPage() {
       <div className="bg-gray-800 p-6 rounded shadow-md w-full max-w-md">
         <div className="mb-4 text-center">
           <h1 className="text-2xl text-blue-400 font-semibold">
-            Medical Report Assistant
+            Medizinischer Berichtsassistent
           </h1>
         </div>
 
@@ -92,7 +92,7 @@ function LoginPage() {
             }`}
             onClick={() => setIsLogin(true)}
           >
-            Login
+            Anmelden
           </button>
           <button
             className={`flex-1 py-2 text-center border-b-2 font-semibold focus:outline-none transition-all ${
@@ -102,7 +102,7 @@ function LoginPage() {
             }`}
             onClick={() => setIsLogin(false)}
           >
-            Register
+            Registrieren
           </button>
         </div>
 
@@ -121,7 +121,7 @@ function LoginPage() {
               />
             </div>
             <div className="mb-4">
-              <label className="block mb-1">Password</label>
+              <label className="block mb-1">Passwort</label>
               <input
                 type="password"
                 required
@@ -135,7 +135,7 @@ function LoginPage() {
               type="submit"
               className="w-full bg-blue-500 hover:bg-blue-600 py-2 rounded font-semibold"
             >
-              Login
+              Anmelden
             </button>
           </form>
         )}
@@ -144,40 +144,43 @@ function LoginPage() {
         {!isLogin && (
           <form onSubmit={handleRegister}>
             <div className="mb-4">
-              <label className="block mb-1">Username</label>
+              <label className="block mb-1">Benutzername</label>
               <input
                 type="text"
                 required
                 value={regUsername}
                 onChange={(e) => setRegUsername(e.target.value)}
                 className="w-full p-2 bg-gray-700 rounded"
+                placeholder="Benutzername eingeben"
               />
             </div>
             <div className="mb-4">
-              <label className="block mb-1">Email</label>
+              <label className="block mb-1">E-Mail</label>
               <input
                 type="email"
                 required
                 value={regEmail}
                 onChange={(e) => setRegEmail(e.target.value)}
                 className="w-full p-2 bg-gray-700 rounded"
+                placeholder="E-Mail eingeben"
               />
             </div>
             <div className="mb-4">
-              <label className="block mb-1">Password</label>
+              <label className="block mb-1">Passwort</label>
               <input
                 type="password"
                 required
                 value={regPassword}
                 onChange={(e) => setRegPassword(e.target.value)}
                 className="w-full p-2 bg-gray-700 rounded"
+                placeholder="Passwort eingeben"
               />
             </div>
             <button
               type="submit"
               className="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-semibold"
             >
-              Register
+              Registrieren
             </button>
           </form>
         )}

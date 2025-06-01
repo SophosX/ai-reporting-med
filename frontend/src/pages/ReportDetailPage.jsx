@@ -32,7 +32,7 @@ function ReportDetailPage() {
       } catch (err) {
         console.error("Error fetching report:", err);
         setError(err.message);
-        toast.error("Error loading report");
+        toast.error("Fehler beim Laden des Berichts");
       } finally {
         setLoading(false);
       }
@@ -55,7 +55,7 @@ function ReportDetailPage() {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8 text-white text-center">
         <FaSync className="animate-spin text-3xl mx-auto mb-4" />
-        <p>Loading report...</p>
+        <p>Lade Bericht...</p>
       </div>
     );
   }
@@ -68,11 +68,11 @@ function ReportDetailPage() {
           className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 mb-6"
         >
           <FaArrowLeft />
-          <span>Back</span>
+          <span>Zurück</span>
         </button>
         <div className="bg-red-500/20 border border-red-500 rounded-lg p-4">
-          <p className="text-white">Error: {error}</p>
-          <p className="mt-2">The report could not be loaded.</p>
+          <p className="text-white">Fehler: {error}</p>
+          <p className="mt-2">Der Bericht konnte nicht geladen werden.</p>
         </div>
       </div>
     );
@@ -85,11 +85,11 @@ function ReportDetailPage() {
         className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 mb-6"
       >
         <FaArrowLeft />
-        <span>Back to Reports</span>
+        <span>Zurück zu den Berichten</span>
       </button>
 
       <h2 className="text-3xl font-bold text-blue-400 mb-6">
-        Report #{reportId}
+        Bericht #{reportId}
       </h2>
 
       {report ? (
@@ -100,7 +100,7 @@ function ReportDetailPage() {
         />
       ) : (
         <div className="bg-gray-800 rounded-xl p-6">
-          <p>Report not found</p>
+          <p>Bericht nicht gefunden</p>
         </div>
       )}
     </div>

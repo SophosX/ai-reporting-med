@@ -26,7 +26,7 @@ function ReportsHistoryPage() {
     } catch (err) {
       console.error("Error fetching reports:", err);
       setError(err.message);
-      toast.error("Error loading reports");
+      toast.error("Fehler beim Laden der Berichte");
     } finally {
       setLoading(false);
     }
@@ -52,14 +52,14 @@ function ReportsHistoryPage() {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8 text-white text-center">
         <FaSync className="animate-spin text-3xl mx-auto mb-4" />
-        <p>Loading reports...</p>
+        <p>Lade Berichte...</p>
       </div>
     );
   }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 text-white">
-      <h2 className="text-3xl font-bold text-blue-400 mb-6">Report History</h2>
+      <h2 className="text-3xl font-bold text-blue-400 mb-6">Berichtshistorie</h2>
 
       {error && (
         <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-6">
@@ -68,7 +68,7 @@ function ReportsHistoryPage() {
       )}
 
       {reports.length === 0 && !error && (
-        <p className="text-gray-400">No reports saved yet.</p>
+        <p className="text-gray-400">Noch keine Berichte gespeichert.</p>
       )}
 
       <div className="space-y-8">

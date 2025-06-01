@@ -79,11 +79,11 @@ function HomePage() {
               <FaFileMedical className="text-2xl text-blue-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-400">Total Reports</p>
+              <p className="text-sm text-gray-400">Gesamtberichte</p>
               {loading ? (
-                <p className="text-2xl font-semibold">Loading...</p>
+                <p className="text-2xl font-semibold">Laden...</p>
               ) : error ? (
-                <p className="text-red-400 text-sm">Error loading count</p>
+                <p className="text-red-400 text-sm">Fehler beim Laden</p>
               ) : (
                 <p className="text-2xl font-semibold">{totalReports}</p>
               )}
@@ -102,9 +102,9 @@ function HomePage() {
                 <FaPlus className="text-2xl text-green-400" />
               </div>
               <div className="ml-4">
-                <p className="text-lg font-semibold">Create New Report</p>
+                <p className="text-lg font-semibold">Neuen Bericht erstellen</p>
                 <p className="text-sm text-gray-400">
-                  Generate a new medical report
+                  Einen neuen medizinischen Bericht generieren
                 </p>
               </div>
             </div>
@@ -123,9 +123,9 @@ function HomePage() {
                 <FaHistory className="text-2xl text-purple-400" />
               </div>
               <div className="ml-4">
-                <p className="text-lg font-semibold">View All Reports</p>
+                <p className="text-lg font-semibold">Alle Berichte anzeigen</p>
                 <p className="text-sm text-gray-400">
-                  Access your report history
+                  Auf Ihre Berichtshistorie zugreifen
                 </p>
               </div>
             </div>
@@ -141,7 +141,7 @@ function HomePage() {
             <div className="flex items-center space-x-3">
               <FaClock className="text-2xl text-blue-400" />
               <h2 className="text-2xl font-bold text-blue-400">
-                Recent Reports
+                Letzte Berichte
               </h2>
             </div>
             {totalReports > 3 && (
@@ -149,7 +149,7 @@ function HomePage() {
                 href="/reports/history"
                 className="text-blue-400 hover:text-blue-300 transition-colors duration-200 flex items-center space-x-2"
               >
-                <span>View all reports</span>
+                <span>Alle Berichte anzeigen</span>
                 <FaArrowRight />
               </a>
             )}
@@ -157,24 +157,24 @@ function HomePage() {
 
           {loading ? (
             <div className="text-center py-12">
-              <p className="text-gray-400">Loading reports...</p>
+              <p className="text-gray-400">Lade Berichte...</p>
             </div>
           ) : error ? (
             <div className="text-center py-12">
-              <p className="text-red-400">Error loading reports</p>
+              <p className="text-red-400">Fehler beim Laden der Berichte</p>
             </div>
           ) : recentReports.length === 0 ? (
             <div className="text-center py-12">
               <FaFileMedical className="text-5xl text-gray-600 mb-4 mx-auto" />
               <p className="text-gray-400 mb-6">
-                No reports yet. Create your first report!
+                Noch keine Berichte vorhanden. Erstellen Sie Ihren ersten Bericht!
               </p>
               <a
                 href="/reports/new"
                 className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg transition-all duration-200"
               >
                 <FaPlus />
-                <span>Create Report</span>
+                <span>Bericht erstellen</span>
               </a>
             </div>
           ) : (

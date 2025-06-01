@@ -98,7 +98,7 @@ function NewReportPage() {
       const data = await response.json();
       setReportText(data.report_text);
       setReportVisible(true);
-      toast.success("Report successfully created");
+      toast.success("Bericht erfolgreich erstellt");
 
       // Navigate to the created report page instead of the home page
       setTimeout(() => {
@@ -106,7 +106,7 @@ function NewReportPage() {
       }, 1500);
     } catch (error) {
       console.error("Error creating report:", error);
-      toast.error(error.message || "Error creating report");
+      toast.error(error.message || "Fehler beim Erstellen des Berichts");
     } finally {
       setIsGenerating(false);
     }
@@ -156,7 +156,7 @@ function NewReportPage() {
         <div className="flex items-center space-x-3 mb-6">
           <FaFileMedical className="text-2xl text-blue-400" />
           <h1 className="text-2xl font-bold text-blue-400">
-            Create Medical Report
+            Medizinischen Bericht erstellen
           </h1>
         </div>
 
@@ -280,7 +280,7 @@ function NewReportPage() {
               ) : (
                 <>
                   <FaMagic />
-                  <span>Generate Report</span>
+                  <span>Generiere Bericht</span>
                 </>
               )}
             </button>
@@ -292,20 +292,20 @@ function NewReportPage() {
           <div className="mt-10 bg-gray-800/50 p-6 rounded-xl border border-blue-500/30">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-xl font-semibold text-blue-400">
-                Generated Report
+                Erstellter Bericht
               </h2>
               <div className="flex space-x-2">
                 <button
                   onClick={handleCopy}
                   className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200 text-gray-300 hover:text-white"
-                  title="Copy to clipboard"
+                  title="In Zwischenablage kopieren"
                 >
                   <FaCopy />
                 </button>
                 <button
                   onClick={handleSaveChanges}
                   className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200 text-gray-300 hover:text-white"
-                  title="Save changes"
+                  title="Änderungen speichern"
                 >
                   <FaSave />
                 </button>

@@ -211,7 +211,7 @@ function TemplatesPage() {
         <div className="flex items-center space-x-3">
           <FaBookMedical className="text-2xl text-purple-400" />
           <h2 className="text-3xl font-bold text-purple-400">
-            Radiologie Templates
+            Radiologie Vorlagen
           </h2>
         </div>
         <button
@@ -451,7 +451,7 @@ function TemplatesPage() {
       <div>
         <h3 className="text-xl font-semibold text-purple-300 mb-4 flex items-center">
           <FaBookMedical className="mr-2" />
-          Standard Templates
+          Standardvorlagen
         </h3>
         <div className="space-y-6">
           {defaultTemplates.map((tpl) => {

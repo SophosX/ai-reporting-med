@@ -41,7 +41,7 @@ function Navbar() {
           <div className="flex items-center space-x-3">
             <FaNotesMedical className="text-white text-2xl" />
             <span className="text-white font-bold text-xl">
-              Medical Reports
+              Medizinische Berichte
             </span>
           </div>
 
@@ -51,16 +51,16 @@ function Navbar() {
               {isLoggedIn && (
                 <>
                   <NavLink to="/" icon={FaHome} label="Dashboard" />
-                  <NavLink to="/reports/new" icon={FaPlus} label="New Report" />
+                  <NavLink to="/reports/new" icon={FaPlus} label="Neuer Bericht" />
                   <NavLink
                     to="/reports/history"
                     icon={FaHistory}
-                    label="History"
+                    label="Historie"
                   />
                   <NavLink
                     to="/templates"
                     icon={FaNotesMedical}
-                    label="Templates"
+                    label="Vorlagen"
                   />
                 </>
               )}
@@ -71,13 +71,13 @@ function Navbar() {
                 <button
                   onClick={handleLogout}
                   className="text-red-400 hover:text-red-300 transition-colors duration-200"
-                  title="Logout"
+                  title="Abmelden"
                 >
                   <FaSignOutAlt />
                 </button>
               ) : (
                 <>
-                  <NavLink to="/login" icon={FaHome} label="Login" />
+                  <NavLink to="/login" icon={FaHome} label="Anmelden" />
                 </>
               )}
             </div>
@@ -100,28 +100,28 @@ function Navbar() {
             {isLoggedIn ? (
               <>
                 <NavLink to="/" icon={FaHome} label="Dashboard" />
-                <NavLink to="/reports/new" icon={FaPlus} label="New Report" />
+                <NavLink to="/reports/new" icon={FaPlus} label="Neuer Bericht" />
                 <NavLink
                   to="/reports/history"
                   icon={FaHistory}
-                  label="History"
+                  label="Historie"
                 />
                 <NavLink
                   to="/templates"
                   icon={FaNotesMedical}
-                  label="Templates"
+                  label="Vorlagen"
                 />
                 <button
                   onClick={handleLogout}
                   className="flex items-center px-3 py-2 text-red-400 hover:text-red-300 text-sm"
                 >
                   <FaSignOutAlt className="mr-2" />
-                  Logout
+                  Abmelden
                 </button>
               </>
             ) : (
               <>
-                <NavLink to="/login" icon={FaHome} label="Login" />
+                <NavLink to="/login" icon={FaHome} label="Anmelden" />
                 <NavLink to="/register" icon={FaPlus} label="Register" />
               </>
             )}
