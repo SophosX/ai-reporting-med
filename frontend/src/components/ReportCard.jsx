@@ -206,9 +206,17 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   };
 
   const renderDiff = (text1, text2) => {
-    if (!text1 || !text2) return null;
+    console.log("Template text:", text1); // Debug
+    console.log("Report text:", text2); // Debug
+    
+    if (!text1 || !text2) {
+      console.log("Missing text:", { text1: !!text1, text2: !!text2 }); // Debug
+      return null;
+    }
 
     const differences = diff.diffWords(text1, text2);
+    console.log("Differences:", differences); // Debug
+    
     return differences.map((part, index) => {
       let className = "";
       if (part.added) {
@@ -385,14 +393,14 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
         </div>
 
         {/* Diff View */}
-        {showDiff && (
+        {showDiff && report.template_text && (
           <div className="mt-6 pt-6 border-t border-gray-700/50">
             <h4 className="text-lg font-semibold text-purple-400 mb-4">
               Vergleich mit Template
             </h4>
             <div className="bg-gray-900/50 rounded-lg p-4">
               <div className="prose prose-invert max-w-none">
-                {renderDiff(report.template_text || "", report.report_text)}
+                {renderDiff(report.template_text, report.report_text)}
               </div>
             </div>
             <div className="mt-4 flex items-center space-x-4 text-sm text-gray-400">

@@ -15,7 +15,10 @@ class ReportOut(BaseModel):
     id: int
     input_text: str
     report_text: str
-    created_at: Optional[datetime] = None
+    created_at: datetime
+    user_id: int
+    template_id: Optional[str] = None
+    template_text: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

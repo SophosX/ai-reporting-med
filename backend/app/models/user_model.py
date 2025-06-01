@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, func
 from sqlalchemy.orm import relationship
 from ..core.database import Base
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -13,3 +14,4 @@ class User(Base):
     
     # Relationships
     templates = relationship("UserTemplate", back_populates="user", cascade="all, delete-orphan")
+    reports = relationship("Report", back_populates="user")

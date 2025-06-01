@@ -40,7 +40,9 @@ async def create_report(
     new_report = Report(
         user_id=current_user_id,
         input_text=report_data.input_text,
-        report_text=generated_text
+        report_text=generated_text,
+        template_id=report_data.template_id,
+        template_text=template_text
     )
     db.add(new_report)
     db.commit()
