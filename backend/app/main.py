@@ -69,6 +69,45 @@ def run_migrations():
 def create_app():
     app = FastAPI(title=settings.PROJECT_NAME + " API")
 
+    # Read allowed origins from environment variable, or use defaults
+    cors_origins_env = settings.CORS_ORIGINS
+    print(f"CORS_ORIGINS: {cors_origins_env}")
+    # If CORS_ORIGINS is set and not empty, parse it as a comma-separated list
+    if cors_origins_env:
+        origins = [origin.strip() for origin in cors_origins_env.split(",")]
+    else:
+        # Default allowed origins for development
+        origins = [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:8000",
+            "http://localhost:8000"
+        ]
+    
+    logger.info(f"CORS allowed origins: {origins}")
+
+    # Add CORS middleware FIRST, before other operations
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=[
+            "accept",
+            "accept-encoding",
+            "authorization",
+            "content-type",
+            "dnt",
+            "origin",
+            "user-agent",
+            "x-csrftoken",
+            "x-requested-with",
+        ],
+        expose_headers=["*"],
+        max_age=86400,  # 24 hours
+    )
+
     # Run migrations before creating tables
     run_migrations()
 
@@ -91,32 +130,6 @@ def create_app():
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
 
-    # Read allowed origins from environment variable, or use defaults
-    cors_origins_env = settings.CORS_ORIGINS
-    print(f"CORS_ORIGINS: {cors_origins_env}")
-    # If CORS_ORIGINS is set and not empty, parse it as a comma-separated list
-    if cors_origins_env:
-        origins = [origin.strip() for origin in cors_origins_env.split(",")]
-    else:
-        # Default allowed origins for development
-        origins = [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:3000",
-            "http://127.0.0.1:8000",
-            "http://localhost:8000"
-        ]
-    
-    logger.info(f"CORS allowed origins: {origins}")
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
     # Router/Endpoints
     app.include_router(auth.router, prefix="/auth", tags=["auth"])
     app.include_router(reports.router, prefix="/reports", tags=["reports"])
@@ -131,3 +144,13 @@ app = create_app()
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Medical Report Generator API"}
+
+@app.get("/health")
+async def health_check():
+    """Simple health check endpoint to test CORS"""
+    return {"status": "ok", "message": "CORS test endpoint"}
+
+@app.options("/health")
+async def health_options():
+    """Handle preflight requests for health endpoint"""
+    return {"message": "OK"}
