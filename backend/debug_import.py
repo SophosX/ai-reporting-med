@@ -57,9 +57,10 @@ def debug_import():
                 for existing in all_matching:
                     print(f"      • user_id: {existing.user_id}, is_default_override: {existing.is_default_override}")
                 
-                # Check the specific filter used in import
+                # Check the specific filter used in import (updated to match fixed templates.py)
                 existing = db.query(UserTemplate).filter(
                     UserTemplate.template_id == template_id,
+                    UserTemplate.user_id == 1,  # Must check for default user
                     UserTemplate.is_default_override == False
                 ).first()
                 
