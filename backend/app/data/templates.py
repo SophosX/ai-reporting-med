@@ -18,14 +18,14 @@ radiologyTemplates = [
 
 **BEFUND:**
 • Keine pneumonischen Infiltrate
-• Keine Pleuraergüsse 
+• Keine Pleuraergüsse
 • Kein Pneumothorax
 • Normalgroße Herzsilhouette ohne Zeichen der pulmonalvenösen Stauung
 • Mittelständiges schlankes Mediastinum mit regelrechter Hiluskonfiguration
 • Mitabgebildeter Weichteilmantel unauffällig
 • Unauffällige Darstellung des miterfassten Achsenskeletts
 
-**BEURTEILUNG:** 
+**BEURTEILUNG:**
 Regelrechter Röntgen-Thoraxbefund ohne pathologische Veränderungen."""
     },
     {
@@ -57,7 +57,7 @@ Regelrechter Röntgen-Thoraxbefund ohne pathologische Veränderungen."""
 • Unauffällige Darstellung des miterfassten Achsenskeletts
 • Unauffällige Darstellung der miterfassten Weichteile
 
-**BEURTEILUNG:** 
+**BEURTEILUNG:**
 Unauffälliger CT-Thorax ohne pathologische Veränderungen."""
     },
     {
@@ -78,8 +78,6 @@ Unauffälliger CT-Thorax ohne pathologische Veränderungen."""
 
 *Pankreas und Milz:*
 • Regelrechte Darstellung der Milz und des Pankreas
-
-*Nebennieren:*
 • Regelrechte Darstellung der Nebennieren
 
 *Urogenitaltrakt:*
@@ -103,7 +101,7 @@ Unauffälliger CT-Thorax ohne pathologische Veränderungen."""
 • Unauffällige Darstellung des miterfassten Achsenskeletts
 • Unauffällige Darstellung der miterfassten Weichteile
 
-**BEURTEILUNG:** 
+**BEURTEILUNG:**
 Unauffälliger CT-Abdomen-Befund ohne pathologische Veränderungen."""
     },
     {
@@ -148,7 +146,7 @@ Unauffälliger CT-Abdomen-Befund ohne pathologische Veränderungen."""
 *Beckenorgane:*
 • Regelrechte Darstellung der Beckenorgane
 
-**BEURTEILUNG:** 
+**BEURTEILUNG:**
 Unauffälliger MRT-Abdomen-Befund ohne pathologische Veränderungen."""
     },
     {
@@ -186,7 +184,7 @@ Unauffälliger MRT-Abdomen-Befund ohne pathologische Veränderungen."""
 • Unauffällige Darstellung der übrigen das Schultergelenk deckenden Muskulatur
 • Unauffällige Darstellung der mitdargestellten Lungenabschnitte und Weichteile
 
-**BEURTEILUNG:** 
+**BEURTEILUNG:**
 Unauffälliger MRT-Schulter-Befund ohne pathologische Veränderungen."""
     }
 ]
