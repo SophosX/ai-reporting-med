@@ -233,9 +233,10 @@ def delete_default_template(template_id: str):
 def import_default_templates(db: Session):
     """Import default templates into the database if they don't exist"""
     for template in radiologyTemplates:
-        # Check if template already exists
+        # Check if template already exists as a default template (user_id=1)
         existing = db.query(UserTemplate).filter(
             UserTemplate.template_id == template["id"],
+            UserTemplate.user_id == 1,  # Must check for default user
             UserTemplate.is_default_override == False
         ).first()
         
