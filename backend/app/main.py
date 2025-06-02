@@ -76,13 +76,14 @@ def create_app():
     if cors_origins_env:
         origins = [origin.strip() for origin in cors_origins_env.split(",")]
     else:
-        # Default allowed origins for development
+        # Default allowed origins for development and production
         origins = [
             "http://localhost:5173",
             "http://127.0.0.1:5173",
             "http://localhost:3000",
             "http://127.0.0.1:8000",
-            "http://localhost:8000"
+            "http://localhost:8000",
+            "https://report.alexanderfesl.com",  # Add your production frontend URL
         ]
     
     logger.info(f"CORS allowed origins: {origins}")
@@ -94,15 +95,7 @@ def create_app():
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=[
-            "accept",
-            "accept-encoding",
-            "authorization",
-            "content-type",
-            "dnt",
-            "origin",
-            "user-agent",
-            "x-csrftoken",
-            "x-requested-with",
+            "*",  # Allow all headers for simplicity
         ],
         expose_headers=["*"],
         max_age=86400,  # 24 hours
@@ -149,8 +142,3 @@ async def root():
 async def health_check():
     """Simple health check endpoint to test CORS"""
     return {"status": "ok", "message": "CORS test endpoint"}
-
-@app.options("/health")
-async def health_options():
-    """Handle preflight requests for health endpoint"""
-    return {"message": "OK"}

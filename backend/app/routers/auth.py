@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ..core.database import get_db
 from ..models.user_model import User
@@ -8,16 +8,6 @@ from datetime import timedelta
 from ..core.config import settings
 
 router = APIRouter()
-
-@router.options("/login")
-async def login_options():
-    """Handle preflight requests for login endpoint"""
-    return {"message": "OK"}
-
-@router.options("/register")
-async def register_options():
-    """Handle preflight requests for register endpoint"""
-    return {"message": "OK"}
 
 @router.post("/register", response_model=UserOut)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -40,7 +30,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 @router.post("/login")
-def login_user(login_data: UserLogin, response: Response, db: Session = Depends(get_db)):
+def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
     print("user")
     identifier = login_data.identifier
     # Entscheide anhand eines einfachen Heuristik: Enthält der Identifier ein "@"? Dann als Email behandeln.
@@ -59,9 +49,5 @@ def login_user(login_data: UserLogin, response: Response, db: Session = Depends(
         data={"sub": str(user.id)},
         expires_delta=access_token_expires
     )
-    
-    # Explicitly set CORS headers
-    response.headers["Access-Control-Allow-Origin"] = "https://report.alexanderfesl.com"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
     
     return {"access_token": access_token, "token_type": "bearer", "user_id": user.id}
