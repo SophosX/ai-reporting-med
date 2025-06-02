@@ -12,81 +12,182 @@ radiologyTemplates = [
     {
         "id": "roentgen-thorax",
         "title": "Röntgen Thorax",
-        "text": """
-UNTERSUCHUNG: CT Thorax nativ und nach KM-Gabe
+        "text": """**UNTERSUCHUNG:** Röntgen Thorax in zwei Ebenen
 
-Keine pneumonischen Infiltrate. Keine Pleuraergüsse. Kein Pneumothorax.
+**TECHNIK:** Konventionelle Röntgenaufnahme des Thorax in posterior-anteriorer und seitlicher Projektion
 
-Normalgroße Herzsilhouette ohne Zeichen der pulmonalvenösen Stauung.
+**BEFUND:**
+• Keine pneumonischen Infiltrate
+• Keine Pleuraergüsse 
+• Kein Pneumothorax
+• Normalgroße Herzsilhouette ohne Zeichen der pulmonalvenösen Stauung
+• Mittelständiges schlankes Mediastinum mit regelrechter Hiluskonfiguration
+• Mitabgebildeter Weichteilmantel unauffällig
+• Unauffällige Darstellung des miterfassten Achsenskeletts
 
-Mittelständiges schlankes Mediastinum mit regelrechter Hiluskonfiguration.
-
-Mitabgebildeter Weichteilmantel unauffällig. Unauffällige Darstellung des miterfassten Achsenskeletts.
-"""
+**BEURTEILUNG:** 
+Regelrechter Röntgen-Thoraxbefund ohne pathologische Veränderungen."""
     },
     {
         "id": "ct-thorax",
         "title": "CT Thorax",
-        "text": """
-Beidseits regelrecht belüftete Lungenflügel, keine relevanten Belüftungsstörungen. Keine pneumonischen Infiltrate. Kein Pleuraerguss. Kein Pneumothorax.
-Keine malignomsuspekten intrapulmonalen Rundherde.
-Normgroßes Herz. Kein Perikarderguss.
-Regelrechte Darstellung der großen intrathorakalen Gefäße.
-Keine thorakale Lymphadenopathie.
-Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darstellung des miterfassten Achsenskeletts sowie der miterfassten Weichteile.
-"""
+        "text": """**UNTERSUCHUNG:** CT Thorax nativ und nach i.v. Kontrastmittelgabe
+
+**TECHNIK:** Spiral-CT des Thorax in kraniokaudaler Richtung mit 1,25mm Schichtdicke
+
+**BEFUND:**
+
+*Lunge:*
+• Beidseits regelrecht belüftete Lungenflügel
+• Keine relevanten Belüftungsstörungen
+• Keine pneumonischen Infiltrate
+• Keine malignomsuspekten intrapulmonalen Rundherde
+• Kein Pleuraerguss
+• Kein Pneumothorax
+
+*Herz und Gefäße:*
+• Normgroßes Herz, kein Perikarderguss
+• Regelrechte Darstellung der großen intrathorakalen Gefäße
+
+*Mediastinum:*
+• Keine thorakale Lymphadenopathie
+
+*Miterfasste Strukturen:*
+• Unauffällige Darstellung der miterfassten Oberbauchorgane
+• Unauffällige Darstellung des miterfassten Achsenskeletts
+• Unauffällige Darstellung der miterfassten Weichteile
+
+**BEURTEILUNG:** 
+Unauffälliger CT-Thorax ohne pathologische Veränderungen."""
     },
     {
         "id": "ct-abdomen",
         "title": "CT Abdomen",
-        "text": """
-Regelrechte Darstellung der Leber ohne Nachweis fokaler Parenchymläsionen. Regelrechte Kontrastierung der venösen und portalvenösen Gefäße. Arterieller Normalversorgungstyp. Keine intra- oder extrahepatische Cholestase. Unauffällige Gallenblase. Regelrechte Darstellung der Milz, des Pancreas sowie der Nebennieren.
+        "text": """**UNTERSUCHUNG:** CT Abdomen nativ und nach i.v. Kontrastmittelgabe
 
-Regelrechte Darstellung der Nieren, kein Harnstau. Harnblase unauffällig.
+**TECHNIK:** Spiral-CT des Abdomens und Beckens mit i.v. Kontrastmittel in arterieller und venöser Phase
 
-Regelrechte Kontrastierung der Darmwände von Dünn- und Dickdarm. Keine Passagestörung.
+**BEFUND:**
 
-Regelrechte Darstellung der Organe im kleinen Becken.
+*Leber und Gallenwege:*
+• Regelrechte Darstellung der Leber ohne Nachweis fokaler Parenchymläsionen
+• Regelrechte Kontrastierung der venösen und portalvenösen Gefäße
+• Arterieller Normalversorgungstyp
+• Keine intra- oder extrahepatische Cholestase
+• Unauffällige Gallenblase
 
-Keine freie intraabdominale Flüssigkeit. Keine freie Luft. Keine abdominelle Lymphadenopathie.
+*Pankreas und Milz:*
+• Regelrechte Darstellung der Milz und des Pankreas
 
-Soweit in der aktuellen Phase abgrenzbar regelrechte Kontrastierung der abgebildeten Gefäßabschnitte.
+*Nebennieren:*
+• Regelrechte Darstellung der Nebennieren
 
-Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darstellung des miterfassten Achsenskeletts sowie der miterfassten Weichteile.
-"""
+*Urogenitaltrakt:*
+• Regelrechte Darstellung der Nieren, kein Harnstau
+• Harnblase unauffällig
+• Regelrechte Darstellung der Organe im kleinen Becken
+
+*Darm:*
+• Regelrechte Kontrastierung der Darmwände von Dünn- und Dickdarm
+• Keine Passagestörung
+
+*Gefäße:*
+• Regelrechte Kontrastierung der abgebildeten Gefäßabschnitte
+
+*Peritoneum und Lymphknoten:*
+• Keine freie intraabdominale Flüssigkeit
+• Keine freie Luft
+• Keine abdominelle Lymphadenopathie
+
+*Skelett und Weichteile:*
+• Unauffällige Darstellung des miterfassten Achsenskeletts
+• Unauffällige Darstellung der miterfassten Weichteile
+
+**BEURTEILUNG:** 
+Unauffälliger CT-Abdomen-Befund ohne pathologische Veränderungen."""
     },
     {
-        "id": "mrt-adbomen",
+        "id": "mrt-abdomen",
         "title": "MRT Abdomen",
-        "text": """
-Regelrechte Artikulation des Kniegelenks. Kein Gelenkerguss. Regelrechte Kontur und Signalintentsität des Gelenkknorpels sowie der Menisci. Regelrechte Darstellung des vorderen und hinteren Kreuzbandes sowie des medialen und lateralen Kollateralbandes. Ebenfalls unauffällige Darstellung der Patellarsehne und der Retinacula patellae.
+        "text": """**UNTERSUCHUNG:** MRT Abdomen nativ und nach i.v. Kontrastmittelgabe
 
-Nach Kontrastmittelapplikation zeigt sich keine auffällige Kontrastmittelanreicherung als Hinweis auf eine entzündliche Veränderung.
+**TECHNIK:** MRT des Abdomens in T1-, T2- und STIR-Wichtung nativ sowie T1-Wichtung nach i.v. Gadolinium-Gabe
 
-Altersentsprechende Epiphysenfugen. Regelrechte Signalintensität der abgebildeten Knochenmarksräume und der mitabgebildeten Weichteile, insbesondere kein Nachweis einer frischen knöchernen Verletzung.
-"""
+**BEFUND:**
+
+*Leber:*
+• Regelrechte Größe und Signalintensität der Leber
+• Homogene Kontrastmittelaufnahme
+• Keine fokalen Läsionen
+• Regelrechte Darstellung der intrahepatischen Gallenwege
+
+*Gallenblase und Gallenwege:*
+• Unauffällige Gallenblase
+• Keine Cholestase
+
+*Pankreas:*
+• Regelrechte Größe und Signalintensität
+• Homogene Kontrastmittelaufnahme
+• Regelrechter Pankreasgang
+
+*Milz:*
+• Regelrechte Größe und Signalintensität
+
+*Nebennieren:*
+• Beidseits unauffällige Nebennieren
+
+*Nieren:*
+• Regelrechte Größe und Signalintensität beider Nieren
+• Homogene Kontrastmittelaufnahme
+• Kein Harnstau
+
+*Retroperitoneum:*
+• Keine vergrößerten Lymphknoten
+• Regelrechte Darstellung der großen Gefäße
+
+*Beckenorgane:*
+• Regelrechte Darstellung der Beckenorgane
+
+**BEURTEILUNG:** 
+Unauffälliger MRT-Abdomen-Befund ohne pathologische Veränderungen."""
     },
     {
         "id": "mrt-schulter",
         "title": "MRT Schulter",
-        "text": """
-Regelrechte Artikulation des normal konfigurierten Oberarmkopfes in
-der regelhaft ausgebildeten Pfanne. Glatte Gelenkflächen bei normal
-breiter Kortikalis. Regelrecht weiter Gelenkspalt. Homogenes, fettäqui-
-valentes Knochenmarksignal.
-Das Labrum glenoidale ist allseits intakt.
-Normale Konfiguration des Akromioklavikulargelenks. Keine Gelenkhy-
-pertrophie. Subakromiales Fettgewebe erhalten.
-Nach Konfiguration und Verlauf reguläre Darstellung der die Rotatoren-
-manschette bildenden Muskulatur. Insbesondere stellt sich der M. su-
-praspinatus nach Lage, Breite und Signalgebung ordnungsgemäß dar
-mit normalem Muskel-Sehnen-Übergang.
-Reguläre Abbildung der intakten Bizepssehne mit normalem Verlauf im
-Canalis bicipitis.
-Unauffällige Darstellung der übrigen das Schultergelenk deckenden
-Muskulatur sowie der mitdargestellten Lungenabschnitte und Weich-
-teile.
-"""
+        "text": """**UNTERSUCHUNG:** MRT der rechten/linken Schulter
+
+**TECHNIK:** MRT der Schulter in koronaren, sagittalen und axialen Schnittebenen in T1-, T2- und PD-Wichtung
+
+**BEFUND:**
+
+*Glenohumeralgelenk:*
+• Regelrechte Artikulation des normal konfigurierten Oberarmkopfes in der regelhaft ausgebildeten Pfanne
+• Glatte Gelenkflächen bei normal breiter Kortikalis
+• Regelrecht weiter Gelenkspalt
+• Homogenes, fettäquivalentes Knochenmarksignal
+
+*Labrum glenoidale:*
+• Das Labrum glenoidale ist allseits intakt
+
+*Akromioklavikulargelenk:*
+• Normale Konfiguration des Akromioklavikulargelenks
+• Keine Gelenkhypertrophie
+• Subakromiales Fettgewebe erhalten
+
+*Rotatorenmanschette:*
+• Regelrechte Darstellung der die Rotatorenmanschette bildenden Muskulatur
+• M. supraspinatus: regelrechte Lage, Breite und Signalgebung mit normalem Muskel-Sehnen-Übergang
+• M. infraspinatus, M. teres minor und M. subscapularis: unauffällig
+
+*Bizepssehne:*
+• Reguläre Abbildung der intakten Bizepssehne mit normalem Verlauf im Canalis bicipitis
+
+*Weitere Strukturen:*
+• Unauffällige Darstellung der übrigen das Schultergelenk deckenden Muskulatur
+• Unauffällige Darstellung der mitdargestellten Lungenabschnitte und Weichteile
+
+**BEURTEILUNG:** 
+Unauffälliger MRT-Schulter-Befund ohne pathologische Veränderungen."""
     }
 ]
 
@@ -235,7 +336,7 @@ def import_default_templates(db: Session):
     # Get current template IDs from the radiologyTemplates array
     current_template_ids = {template["id"] for template in radiologyTemplates}
     
-    # Import new templates
+    # Import or update templates
     for template in radiologyTemplates:
         # Check if template already exists as a default template (user_id=1)
         existing = db.query(UserTemplate).filter(
@@ -244,8 +345,14 @@ def import_default_templates(db: Session):
             UserTemplate.is_default_override == False
         ).first()
         
-        if not existing:
+        if existing:
+            # Update existing template with new content
+            logger.info(f"Updating existing default template: {template['id']}")
+            existing.title = template["title"]
+            existing.text = template["text"]
+        else:
             # Create new template in database
+            logger.info(f"Creating new default template: {template['id']}")
             new_template = UserTemplate(
                 user_id=1,  # Use admin user ID
                 title=template["title"],
@@ -286,4 +393,42 @@ def import_default_templates(db: Session):
     except Exception as e:
         db.rollback()
         logger.error(f"Error synchronizing default templates: {e}")
+        raise
+
+def update_all_templates_formatting(db: Session):
+    """Update all existing templates with the new formatting - this will affect all users"""
+    logger.info("Starting formatting update for all templates...")
+    
+    # Get all default templates that need updating
+    for template_data in radiologyTemplates:
+        # Update the default template (user_id=1)
+        default_template = db.query(UserTemplate).filter(
+            UserTemplate.template_id == template_data["id"],
+            UserTemplate.user_id == 1,
+            UserTemplate.is_default_override == False
+        ).first()
+        
+        if default_template:
+            logger.info(f"Updating formatting for default template: {template_data['id']}")
+            default_template.title = template_data["title"]
+            default_template.text = template_data["text"]
+        
+        # Find ALL user overrides for this template and force update them
+        user_overrides = db.query(UserTemplate).filter(
+            UserTemplate.default_template_id == template_data["id"],
+            UserTemplate.is_default_override == True
+        ).all()
+        
+        for override in user_overrides:
+            # Force update ALL user overrides regardless of customization
+            logger.info(f"Force updating user override for template {template_data['id']} (user: {override.user_id})")
+            override.title = template_data["title"]
+            override.text = template_data["text"]
+    
+    try:
+        db.commit()
+        logger.info("Template formatting update completed successfully")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating template formatting: {e}")
         raise
