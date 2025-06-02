@@ -87,21 +87,6 @@ Unauffällige Darstellung der übrigen das Schultergelenk deckenden
 Muskulatur sowie der mitdargestellten Lungenabschnitte und Weich-
 teile.
 """
-    },
-        {
-        "id": "raees",
-        "title": "raees",
-        "text": """
-UNTERSUCHUNG: CT Thorax nativ und nach KM-Gabe
-
-Keine pneumonischen Infiltrate. Keine Pleuraergüsse. Kein Pneumothorax.
-
-Normalgroße Herzsilhouette ohne Zeichen der pulmonalvenösen Stauung.
-
-Mittelständiges schlankes Mediastinum mit regelrechter Hiluskonfiguration.
-
-Mitabgebildeter Weichteilmantel unauffällig. Unauffällige Darstellung des miterfassten Achsenskeletts.
-"""
     }
 ]
 
