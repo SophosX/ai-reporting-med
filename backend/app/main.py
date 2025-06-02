@@ -17,27 +17,50 @@ logger = logging.getLogger(__name__)
 def run_migrations():
     """Run database migration scripts"""
     try:
-        # Path to the migration script
-        migration_path = os.path.join(
+        # Path to the template columns migration script
+        template_migration_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "migration_add_template_columns.py"
+        )
+        
+        # Path to the override columns migration script
+        override_migration_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "migration_add_override_columns.py"
         )
         
-        if os.path.exists(migration_path):
-            logger.info(f"Running migration script: {migration_path}")
+        # Run template columns migration first
+        if os.path.exists(template_migration_path):
+            logger.info(f"Running template migration script: {template_migration_path}")
             
             # Load and run the migration script
-            spec = importlib.util.spec_from_file_location("migration", migration_path)
+            spec = importlib.util.spec_from_file_location("template_migration", template_migration_path)
             migration = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(migration)
             
             # Run the migration
             migration.run_migration()
-            logger.info("Migration completed")
-        else:
-            logger.info("No migration script found")
+            logger.info("Template migration completed")
+        
+        # Run override columns migration second
+        if os.path.exists(override_migration_path):
+            logger.info(f"Running override migration script: {override_migration_path}")
+            
+            # Load and run the migration script
+            spec = importlib.util.spec_from_file_location("override_migration", override_migration_path)
+            migration = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(migration)
+            
+            # Run the migration
+            migration.run_migration()
+            logger.info("Override migration completed")
+        
+        if not os.path.exists(template_migration_path) and not os.path.exists(override_migration_path):
+            logger.info("No migration scripts found")
     except Exception as e:
         logger.error(f"Error running migrations: {e}")
+        # Don't raise the exception to allow the app to continue
+        # raise
 
 def create_app():
     app = FastAPI(title=settings.PROJECT_NAME + " API")
