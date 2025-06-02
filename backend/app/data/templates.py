@@ -1,4 +1,5 @@
 from ..models.template_model import UserTemplate
+from ..models.user_model import User  # Import User model to resolve SQLAlchemy relationships
 from sqlalchemy.orm import Session
 import logging
 

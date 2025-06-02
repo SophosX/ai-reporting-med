@@ -11,6 +11,9 @@ from .core.init_db import init_db
 from .core.database import get_db
 from dotenv import load_dotenv
 
+# Import all models to ensure SQLAlchemy can resolve relationships
+from .models import User, UserTemplate, Report
+
 # Load environment variables from .env file
 load_dotenv()
 
