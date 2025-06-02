@@ -162,8 +162,7 @@ def get_all_templates(db: Session = None, user_id: int = None):
         # Get custom templates (not overrides)
         custom_templates = db.query(UserTemplate).filter(
             UserTemplate.user_id == user_id,
-            UserTemplate.is_default_override == False,
-            UserTemplate.template_id.like('user-%')  # Only include user-created templates
+            UserTemplate.is_default_override == False
         ).all()
         
         # Add custom templates to the list
@@ -231,7 +230,12 @@ def delete_default_template(template_id: str):
     return False
 
 def import_default_templates(db: Session):
-    """Import default templates into the database if they don't exist"""
+    """Import default templates into the database if they don't exist and remove templates that are no longer in the array"""
+    
+    # Get current template IDs from the radiologyTemplates array
+    current_template_ids = {template["id"] for template in radiologyTemplates}
+    
+    # Import new templates
     for template in radiologyTemplates:
         # Check if template already exists as a default template (user_id=1)
         existing = db.query(UserTemplate).filter(
@@ -251,9 +255,35 @@ def import_default_templates(db: Session):
             )
             db.add(new_template)
     
+    # Find and remove templates that are no longer in the radiologyTemplates array
+    # Get all existing default templates from database
+    existing_default_templates = db.query(UserTemplate).filter(
+        UserTemplate.user_id == 1,
+        UserTemplate.is_default_override == False
+    ).all()
+    
+    # Check which templates need to be removed
+    for existing_template in existing_default_templates:
+        if existing_template.template_id not in current_template_ids:
+            logger.info(f"Removing template '{existing_template.template_id}' as it's no longer in the default templates array")
+            
+            # Delete the default template
+            db.delete(existing_template)
+            
+            # Also delete all user overrides for this template
+            user_overrides = db.query(UserTemplate).filter(
+                UserTemplate.default_template_id == existing_template.template_id,
+                UserTemplate.is_default_override == True
+            ).all()
+            
+            for override in user_overrides:
+                logger.info(f"Removing user override for template '{existing_template.template_id}' (user: {override.user_id})")
+                db.delete(override)
+    
     try:
         db.commit()
+        logger.info("Default templates synchronized successfully")
     except Exception as e:
         db.rollback()
-        logger.error(f"Error importing default templates: {e}")
+        logger.error(f"Error synchronizing default templates: {e}")
         raise
