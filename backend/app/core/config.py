@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     OPENAI_MODEL: str = "gpt-4"
     
+    # CORS settings
+    CORS_ORIGINS: str = ""
+    
     # Configure environment variables loading
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

@@ -9,6 +9,10 @@ import importlib.util
 import sys
 from .core.init_db import init_db
 from .core.database import get_db
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -88,7 +92,8 @@ def create_app():
         logger.error(f"Error initializing database: {e}")
 
     # Read allowed origins from environment variable, or use defaults
-    cors_origins_env = os.getenv("CORS_ORIGINS", "")
+    cors_origins_env = settings.CORS_ORIGINS
+    print(f"CORS_ORIGINS: {cors_origins_env}")
     # If CORS_ORIGINS is set and not empty, parse it as a comma-separated list
     if cors_origins_env:
         origins = [origin.strip() for origin in cors_origins_env.split(",")]
