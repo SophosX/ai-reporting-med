@@ -26,13 +26,16 @@ async def create_template(
 ):
     """Create a new user template."""
     
-    # Create template ID if not provided
+    # Create template ID if not provided or ensure it starts with user- prefix
     if not template_data.template_id:
         template_data_dict = template_data.dict()
         template_id = f"user-{current_user_id}-{slugify(template_data.title)}"
         template_data_dict["template_id"] = template_id
     else:
         template_data_dict = template_data.dict()
+        # Ensure user templates always start with "user-" prefix
+        if not template_data_dict["template_id"].startswith("user-"):
+            template_data_dict["template_id"] = f"user-{current_user_id}-{template_data_dict['template_id']}"
     
     # Check if template_id already exists
     existing = db.query(UserTemplate).filter(UserTemplate.template_id == template_data_dict["template_id"]).first()
@@ -47,7 +50,8 @@ async def create_template(
             user_id=current_user_id,
             title=template_data_dict["title"],
             template_id=template_data_dict["template_id"],
-            text=template_data_dict["text"]
+            text=template_data_dict["text"],
+            is_default_override=False
         )
         
         db.add(new_template)

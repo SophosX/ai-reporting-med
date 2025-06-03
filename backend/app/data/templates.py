@@ -1,4 +1,5 @@
 from ..models.template_model import UserTemplate
+from ..models.user_model import User  # Import User model to resolve SQLAlchemy relationships
 from sqlalchemy.orm import Session
 import logging
 
@@ -13,13 +14,9 @@ radiologyTemplates = [
         "title": "Röntgen Thorax",
         "text": """
 UNTERSUCHUNG: CT Thorax nativ und nach KM-Gabe
-
 Keine pneumonischen Infiltrate. Keine Pleuraergüsse. Kein Pneumothorax.
-
 Normalgroße Herzsilhouette ohne Zeichen der pulmonalvenösen Stauung.
-
 Mittelständiges schlankes Mediastinum mit regelrechter Hiluskonfiguration.
-
 Mitabgebildeter Weichteilmantel unauffällig. Unauffällige Darstellung des miterfassten Achsenskeletts.
 """
     },
@@ -40,17 +37,11 @@ Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darste
         "title": "CT Abdomen",
         "text": """
 Regelrechte Darstellung der Leber ohne Nachweis fokaler Parenchymläsionen. Regelrechte Kontrastierung der venösen und portalvenösen Gefäße. Arterieller Normalversorgungstyp. Keine intra- oder extrahepatische Cholestase. Unauffällige Gallenblase. Regelrechte Darstellung der Milz, des Pancreas sowie der Nebennieren.
-
 Regelrechte Darstellung der Nieren, kein Harnstau. Harnblase unauffällig.
-
 Regelrechte Kontrastierung der Darmwände von Dünn- und Dickdarm. Keine Passagestörung.
-
 Regelrechte Darstellung der Organe im kleinen Becken.
-
 Keine freie intraabdominale Flüssigkeit. Keine freie Luft. Keine abdominelle Lymphadenopathie.
-
 Soweit in der aktuellen Phase abgrenzbar regelrechte Kontrastierung der abgebildeten Gefäßabschnitte.
-
 Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darstellung des miterfassten Achsenskeletts sowie der miterfassten Weichteile.
 """
     },
@@ -59,9 +50,7 @@ Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darste
         "title": "MRT Abdomen",
         "text": """
 Regelrechte Artikulation des Kniegelenks. Kein Gelenkerguss. Regelrechte Kontur und Signalintentsität des Gelenkknorpels sowie der Menisci. Regelrechte Darstellung des vorderen und hinteren Kreuzbandes sowie des medialen und lateralen Kollateralbandes. Ebenfalls unauffällige Darstellung der Patellarsehne und der Retinacula patellae.
-
 Nach Kontrastmittelapplikation zeigt sich keine auffällige Kontrastmittelanreicherung als Hinweis auf eine entzündliche Veränderung.
-
 Altersentsprechende Epiphysenfugen. Regelrechte Signalintensität der abgebildeten Knochenmarksräume und der mitabgebildeten Weichteile, insbesondere kein Nachweis einer frischen knöchernen Verletzung.
 """
     },
@@ -88,6 +77,7 @@ teile.
 """
     }
 ]
+
 
 def get_template_by_id(template_id: str, db: Session = None, user_id: int = None):
     """Get a template by its ID from the database"""
@@ -161,8 +151,7 @@ def get_all_templates(db: Session = None, user_id: int = None):
         # Get custom templates (not overrides)
         custom_templates = db.query(UserTemplate).filter(
             UserTemplate.user_id == user_id,
-            UserTemplate.is_default_override == False,
-            UserTemplate.template_id.like('user-%')  # Only include user-created templates
+            UserTemplate.is_default_override == False
         ).all()
         
         # Add custom templates to the list
@@ -230,16 +219,28 @@ def delete_default_template(template_id: str):
     return False
 
 def import_default_templates(db: Session):
-    """Import default templates into the database if they don't exist"""
+    """Import default templates into the database if they don't exist and remove templates that are no longer in the array"""
+    
+    # Get current template IDs from the radiologyTemplates array
+    current_template_ids = {template["id"] for template in radiologyTemplates}
+    
+    # Import or update templates
     for template in radiologyTemplates:
-        # Check if template already exists
+        # Check if template already exists as a default template (user_id=1)
         existing = db.query(UserTemplate).filter(
             UserTemplate.template_id == template["id"],
+            UserTemplate.user_id == 1,  # Must check for default user
             UserTemplate.is_default_override == False
         ).first()
         
-        if not existing:
+        if existing:
+            # Update existing template with new content
+            logger.info(f"Updating existing default template: {template['id']}")
+            existing.title = template["title"]
+            existing.text = template["text"]
+        else:
             # Create new template in database
+            logger.info(f"Creating new default template: {template['id']}")
             new_template = UserTemplate(
                 user_id=1,  # Use admin user ID
                 title=template["title"],
@@ -249,9 +250,73 @@ def import_default_templates(db: Session):
             )
             db.add(new_template)
     
+    # Find and remove templates that are no longer in the radiologyTemplates array
+    # Get all existing default templates from database
+    existing_default_templates = db.query(UserTemplate).filter(
+        UserTemplate.user_id == 1,
+        UserTemplate.is_default_override == False
+    ).all()
+    
+    # Check which templates need to be removed
+    for existing_template in existing_default_templates:
+        if existing_template.template_id not in current_template_ids:
+            logger.info(f"Removing template '{existing_template.template_id}' as it's no longer in the default templates array")
+            
+            # Delete the default template
+            db.delete(existing_template)
+            
+            # Also delete all user overrides for this template
+            user_overrides = db.query(UserTemplate).filter(
+                UserTemplate.default_template_id == existing_template.template_id,
+                UserTemplate.is_default_override == True
+            ).all()
+            
+            for override in user_overrides:
+                logger.info(f"Removing user override for template '{existing_template.template_id}' (user: {override.user_id})")
+                db.delete(override)
+    
     try:
         db.commit()
+        logger.info("Default templates synchronized successfully")
     except Exception as e:
         db.rollback()
-        logger.error(f"Error importing default templates: {e}")
+        logger.error(f"Error synchronizing default templates: {e}")
+        raise
+
+def update_all_templates_formatting(db: Session):
+    """Update all existing templates with the new formatting - this will affect all users"""
+    logger.info("Starting formatting update for all templates...")
+    
+    # Get all default templates that need updating
+    for template_data in radiologyTemplates:
+        # Update the default template (user_id=1)
+        default_template = db.query(UserTemplate).filter(
+            UserTemplate.template_id == template_data["id"],
+            UserTemplate.user_id == 1,
+            UserTemplate.is_default_override == False
+        ).first()
+        
+        if default_template:
+            logger.info(f"Updating formatting for default template: {template_data['id']}")
+            default_template.title = template_data["title"]
+            default_template.text = template_data["text"]
+        
+        # Find ALL user overrides for this template and force update them
+        user_overrides = db.query(UserTemplate).filter(
+            UserTemplate.default_template_id == template_data["id"],
+            UserTemplate.is_default_override == True
+        ).all()
+        
+        for override in user_overrides:
+            # Force update ALL user overrides regardless of customization
+            logger.info(f"Force updating user override for template {template_data['id']} (user: {override.user_id})")
+            override.title = template_data["title"]
+            override.text = template_data["text"]
+    
+    try:
+        db.commit()
+        logger.info("Template formatting update completed successfully")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating template formatting: {e}")
         raise
