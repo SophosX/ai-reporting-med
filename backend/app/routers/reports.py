@@ -32,8 +32,7 @@ async def create_report(
     generated_text = get_completion(
         input_text=report_data.input_text,
         template_text=template_text,
-        custom_prompt=report_data.custom_prompt,
-        format_instructions=report_data.format_instructions
+        custom_prompt=report_data.custom_prompt
     )
 
     # Save to database

@@ -6,7 +6,6 @@ class ReportCreate(BaseModel):
     input_text: str
     template_id: Optional[str] = None
     custom_prompt: Optional[str] = None
-    format_instructions: Optional[str] = None
 
 class ReportUpdate(BaseModel):
     report_text: str

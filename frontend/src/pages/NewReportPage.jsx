@@ -31,17 +31,14 @@ function NewReportPage() {
 
   // Default prompt to show in the textarea
   const defaultPrompt =
-    "Du bist ein Assistent für Radiologinnen und Radiologen. Du erhältst als Eingabe unstrukturierte, teils fehlerhafte, frei formulierte Texte oder Diktate mit radiologischen Beobachtungen. Deine Aufgabe ist es, ausschließlich auf Grundlage dieser Angaben einen sprachlich korrekten, vollständig strukturierten radiologischen Befund in deutscher Sprache zu generieren."
-
-            "**Verbindliche Vorgaben:**"
-
-           " - Verwende ausschließlich Informationen aus dem Eingabetext."
-           " - Keine Ergänzungen, Vermutungen oder erfundenen Inhalte."
-           " - Jeder Aspekt des folgenden Templates muss vollständig berücksichtigt werden – auch wenn hierzu keine Angaben im Input enthalten sind. In diesem Fall ist die entsprechende unauffällige Normalformulierung (wie im Template) einzufügen."
-           " - Die Reihenfolge der Abschnitte im Template darf unter keinen Umständen verändert werden."
-           " - Der Befundtext muss als einzeiliger Fließtext ausgegeben werden – keine Segmentierung, keine Zwischenüberschriften, keine Absätze."
-           " - Verwende den typischen, stichpunktartigen Stil radiologischer Befunde: kurz, sachlich, telegraphisch, ohne erklärende oder narrative Sprache."
-        ;
+    "Du bist ein Assistent für Radiologinnen und Radiologen. Du erhältst als Eingabe unstrukturierte, teils fehlerhafte, frei formulierte Texte oder Diktate mit radiologischen Beobachtungen. Deine Aufgabe ist es, ausschließlich auf Grundlage dieser Angaben einen sprachlich korrekten, vollständig strukturierten radiologischen Befund in deutscher Sprache zu generieren.\n\n" +
+    "**Verbindliche Vorgaben:**\n" +
+    "- Verwende ausschließlich Informationen aus dem Eingabetext.\n" +
+    "- Keine Ergänzungen, Vermutungen oder erfundenen Inhalte.\n" +
+    "- Jeder Aspekt des folgenden Templates muss vollständig berücksichtigt werden – auch wenn hierzu keine Angaben im Input enthalten sind. In diesem Fall ist die entsprechende unauffällige Normalformulierung (wie im Template) einzufügen.\n" +
+    "- Die Reihenfolge der Abschnitte im Template darf unter keinen Umständen verändert werden.\n" +
+    "- Der Befundtext muss als einzeiliger Fließtext ausgegeben werden – keine Segmentierung, keine Zwischenüberschriften, keine Absätze.\n" +
+    "- Verwende den typischen, stichpunktartigen Stil radiologischer Befunde: kurz, sachlich, telegraphisch, ohne erklärende oder narrative Sprache.";
 
   // Load template when component mounts or when selectedTemplateId changes
   useEffect(() => {
@@ -55,6 +52,13 @@ function NewReportPage() {
       }
     }
   }, [selectedTemplateId, templates, loadTemplates]);
+
+  // Initialize custom prompt with default value
+  useEffect(() => {
+    if (!customPrompt) {
+      setCustomPrompt(defaultPrompt);
+    }
+  }, [defaultPrompt]);
 
   const handleTemplateChange = (e) => {
     const tplId = e.target.value;
@@ -77,8 +81,7 @@ function NewReportPage() {
       const payload = {
         input_text: inputText,
         template_id: selectedTemplateId || null,
-        custom_prompt:
-          showAdvancedOptions && customPrompt ? customPrompt : null,
+        custom_prompt: customPrompt || null,
       };
 
       const response = await fetch(`${API_URL}/reports/`, {
@@ -252,18 +255,17 @@ function NewReportPage() {
                 htmlFor="customPrompt"
                 className="block mb-2 text-sm text-gray-300"
               >
-                Eigener Prompt (optional):
+                System Prompt:
               </label>
               <textarea
                 id="customPrompt"
-                rows="4"
+                rows="8"
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder={defaultPrompt}
-                className="w-full p-3 bg-gray-800/70 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-xs"
+                className="w-full p-3 bg-gray-800/70 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Überschreibt die Standardeinstellungen für KI-Prompts
+                Definiert das Verhalten der KI bei der Berichterstellung
               </p>
             </div>
           )}
