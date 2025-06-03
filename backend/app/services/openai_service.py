@@ -1,6 +1,7 @@
-from openai import OpenAI
+from openai import AzureOpenAI
 from ..core.config import settings
-
+endpoint = "https://ukatrki02.openai.azure.com/"
+subscription_key = "003c87cb1b9a45e1aeca00b9cbd0eaec"
 
 def get_completion(input_text: str, template_text: str = None, custom_prompt: str = None) -> str:
     """
@@ -15,7 +16,11 @@ def get_completion(input_text: str, template_text: str = None, custom_prompt: st
         Generated report text
     """
     # Create OpenAI client with API key
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    client = AzureOpenAI(  
+    	azure_endpoint=endpoint,  
+    	api_key=subscription_key,  
+    	api_version="2025-01-01-preview",
+    )
 
     # Create the system prompt
     if custom_prompt:
