@@ -12,6 +12,7 @@ import { useTemplate } from "../context/TemplateContext";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
 import API_URL from "../utils/apiConfig";
+import Select from "react-select";
 
 function NewReportPage() {
   const navigate = useNavigate();
@@ -63,6 +64,96 @@ function NewReportPage() {
   const handleTemplateChange = (e) => {
     const tplId = e.target.value;
     setSelectedTemplateId(tplId);
+  };
+
+  // Custom styles for React Select to match dark theme
+  const customSelectStyles = {
+    control: (provided, state) => ({
+      ...provided,
+      backgroundColor: "#1f2937", // bg-gray-800
+      borderColor: state.isFocused ? "#3b82f6" : "#374151", // focus:ring-blue-500 : border-gray-700
+      borderWidth: "1px",
+      borderRadius: "0.5rem", // rounded-lg
+      minHeight: "42px",
+      boxShadow: state.isFocused ? "0 0 0 2px rgba(59, 130, 246, 0.5)" : "none",
+      "&:hover": {
+        borderColor: state.isFocused ? "#3b82f6" : "#6b7280",
+      },
+    }),
+    singleValue: (provided) => ({
+      ...provided,
+      color: "#ffffff", // text-white
+    }),
+    input: (provided) => ({
+      ...provided,
+      color: "#ffffff", // text-white
+    }),
+    placeholder: (provided) => ({
+      ...provided,
+      color: "#9ca3af", // text-gray-400
+    }),
+    menu: (provided) => ({
+      ...provided,
+      backgroundColor: "#1f2937", // bg-gray-800
+      border: "1px solid #374151", // border-gray-700
+      borderRadius: "0.5rem",
+      marginTop: "4px",
+      zIndex: 50,
+    }),
+    menuList: (provided) => ({
+      ...provided,
+      padding: "4px",
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      backgroundColor: state.isSelected
+        ? "#3b82f6" // bg-blue-600
+        : state.isFocused
+        ? "#374151" // bg-gray-700
+        : "transparent",
+      color: "#ffffff", // text-white
+      padding: "8px 12px",
+      borderRadius: "0.25rem",
+      margin: "2px 0",
+      cursor: "pointer",
+      "&:hover": {
+        backgroundColor: state.isSelected ? "#3b82f6" : "#374151",
+      },
+    }),
+    dropdownIndicator: (provided) => ({
+      ...provided,
+      color: "#9ca3af", // text-gray-400
+      "&:hover": {
+        color: "#ffffff",
+      },
+    }),
+    indicatorSeparator: (provided) => ({
+      ...provided,
+      backgroundColor: "#374151", // border-gray-700
+    }),
+    clearIndicator: (provided) => ({
+      ...provided,
+      color: "#9ca3af", // text-gray-400
+      "&:hover": {
+        color: "#ffffff",
+      },
+    }),
+    groupHeading: (provided) => ({
+      ...provided,
+      color: "#60a5fa", // text-blue-400
+      fontWeight: "600",
+      fontSize: "0.875rem",
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      padding: "8px 12px 4px",
+      marginBottom: "4px",
+      borderBottom: "1px solid #374151",
+    }),
+    group: (provided) => ({
+      ...provided,
+      paddingTop: "4px",
+      paddingBottom: "4px",
+    }),
   };
 
   const handleSaveReport = async (e) => {
@@ -155,6 +246,36 @@ function NewReportPage() {
     }
   };
 
+  // Create grouped options for React Select
+  const getGroupedOptions = () => {
+    const userTemplates = templates.filter((t) => t.user_created);
+    const standardTemplates = templates.filter((t) => !t.user_created);
+
+    const options = [];
+
+    if (userTemplates.length > 0) {
+      options.push({
+        label: "Meine Templates",
+        options: userTemplates.map((tpl) => ({
+          value: tpl.id,
+          label: tpl.title,
+        })),
+      });
+    }
+
+    // Add standard templates directly without grouping
+    if (standardTemplates.length > 0) {
+      standardTemplates.forEach((tpl) => {
+        options.push({
+          value: tpl.id,
+          label: tpl.title,
+        });
+      });
+    }
+
+    return options;
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
       <div className="glass-effect rounded-xl shadow-lg p-8 hover-lift">
@@ -179,41 +300,32 @@ function NewReportPage() {
                 <span>Lade Templates...</span>
               </div>
             ) : (
-              <select
-                id="template"
-                value={selectedTemplateId || ""}
-                onChange={handleTemplateChange}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-white"
-              >
-                <option value="">-- ohne Vorlage --</option>
-                {templates.length > 0 && (
-                  <>
-                    {/* Group user templates */}
-                    {templates.filter((t) => t.user_created).length > 0 && (
-                      <optgroup label="Meine Templates">
-                        {templates
-                          .filter((t) => t.user_created)
-                          .map((tpl) => (
-                            <option key={tpl.id} value={tpl.id}>
-                              {tpl.title}
-                            </option>
-                          ))}
-                      </optgroup>
-                    )}
-
-                    {/* Group default templates */}
-                    <optgroup label="Standard Templates">
-                      {templates
-                        .filter((t) => !t.user_created)
-                        .map((tpl) => (
-                          <option key={tpl.id} value={tpl.id}>
-                            {tpl.title}
-                          </option>
-                        ))}
-                    </optgroup>
-                  </>
-                )}
-              </select>
+              <Select
+                value={
+                  selectedTemplateId
+                    ? templates.find((t) => t.id === selectedTemplateId)
+                      ? {
+                          value: selectedTemplateId,
+                          label: templates.find(
+                            (t) => t.id === selectedTemplateId
+                          )?.title,
+                        }
+                      : null
+                    : null
+                }
+                onChange={(selectedOption) => {
+                  setSelectedTemplateId(
+                    selectedOption ? selectedOption.value : ""
+                  );
+                }}
+                options={getGroupedOptions()}
+                isSearchable
+                isClearable
+                isDisabled={templatesLoading}
+                placeholder="-- ohne Vorlage --"
+                styles={customSelectStyles}
+                noOptionsMessage={() => "Keine Templates gefunden"}
+              />
             )}
           </div>
 

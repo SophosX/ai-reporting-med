@@ -11,10 +11,21 @@ router = APIRouter()
 
 @router.post("/register", response_model=UserOut)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
-    # Prüfen, ob Email bereits existiert
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already in use.")
+    # Check if username already exists
+    existing_username = db.query(User).filter(User.username == user_data.username).first()
+    if existing_username:
+        raise HTTPException(
+            status_code=400, 
+            detail="Username already exists. Please choose a different username."
+        )
+    
+    # Check if email already exists
+    existing_email = db.query(User).filter(User.email == user_data.email).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=400, 
+            detail="Email address is already registered. Please use a different email."
+        )
 
     hashed_pw = get_password_hash(user_data.password)
     new_user = User(

@@ -9,6 +9,10 @@ import {
   FaUndo,
   FaUserEdit,
   FaUndoAlt,
+  FaChevronDown,
+  FaChevronUp,
+  FaExpandArrowsAlt,
+  FaCompressArrowsAlt,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useTemplate } from "../context/TemplateContext";
@@ -39,6 +43,7 @@ function TemplatesPage() {
   // State for creating/editing templates
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(null);
+  const [expandedTemplates, setExpandedTemplates] = useState(new Set());
   const [newTemplate, setNewTemplate] = useState({
     title: "",
     template_id: "",
@@ -53,6 +58,28 @@ function TemplatesPage() {
   useEffect(() => {
     loadTemplates();
   }, [loadTemplates]);
+
+  // Function to toggle template expansion
+  const toggleTemplateExpansion = (templateId) => {
+    const newExpanded = new Set(expandedTemplates);
+    if (newExpanded.has(templateId)) {
+      newExpanded.delete(templateId);
+    } else {
+      newExpanded.add(templateId);
+    }
+    setExpandedTemplates(newExpanded);
+  };
+
+  // Function to expand all templates
+  const expandAllTemplates = () => {
+    const allTemplateIds = templates.map((t) => t.id);
+    setExpandedTemplates(new Set(allTemplateIds));
+  };
+
+  // Function to collapse all templates
+  const collapseAllTemplates = () => {
+    setExpandedTemplates(new Set());
+  };
 
   const handleSelect = (tplId) => {
     setSelectedTemplateId(tplId);
@@ -228,6 +255,35 @@ function TemplatesPage() {
         Radiologieberichte oder erstelle deine eigenen:
       </p>
 
+      {/* Expand/Collapse Controls */}
+      {templates.length > 0 && (
+        <div className="flex justify-between items-center mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
+          <div className="text-sm text-gray-300">
+            <span className="font-medium">{templates.length}</span> Templates
+            verfügbar
+            {expandedTemplates.size > 0 && (
+              <span className="ml-2">({expandedTemplates.size} erweitert)</span>
+            )}
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={expandAllTemplates}
+              className="text-sm px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+            >
+              <FaExpandArrowsAlt className="text-xs" />
+              <span>Alle erweitern</span>
+            </button>
+            <button
+              onClick={collapseAllTemplates}
+              className="text-sm px-3 py-1 bg-gray-600/20 hover:bg-gray-600/30 text-gray-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+            >
+              <FaCompressArrowsAlt className="text-xs" />
+              <span>Alle zuklappen</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Template Creation Form */}
       {isCreating && (
         <div className="mb-8 bg-gray-800 p-6 rounded-xl border border-purple-500/40">
@@ -322,6 +378,7 @@ function TemplatesPage() {
             {userTemplates.map((tpl) => {
               const isSelected = tpl.id === selectedTemplateId;
               const isCurrentlyEditing = isEditing === tpl.template_db_id;
+              const isExpanded = expandedTemplates.has(tpl.id);
 
               return (
                 <div
@@ -401,19 +458,45 @@ function TemplatesPage() {
                   ) : (
                     <>
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-xl font-semibold text-purple-300">
-                          {tpl.title}
-                        </h3>
-                        <div className="flex space-x-2">
+                        <div
+                          className="flex-1 cursor-pointer"
+                          onClick={() => toggleTemplateExpansion(tpl.id)}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <h3 className="text-xl font-semibold text-purple-300 hover:text-purple-200 transition-colors">
+                              {tpl.title}
+                            </h3>
+                            {isExpanded ? (
+                              <FaChevronUp className="text-gray-400 text-sm" />
+                            ) : (
+                              <FaChevronDown className="text-gray-400 text-sm" />
+                            )}
+                          </div>
+                          {!isExpanded && (
+                            <div className="text-xs text-gray-500 mt-1 truncate">
+                              {tpl.text
+                                .replace(/[#*_`]/g, "")
+                                .substring(0, 100)}
+                              ...
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex space-x-2 ml-4">
                           <button
-                            onClick={() => handleStartEditing(tpl)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartEditing(tpl);
+                            }}
                             className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-blue-400"
                             title="Template bearbeiten"
                           >
                             <FaEdit />
                           </button>
                           <button
-                            onClick={() => handleDelete(tpl.template_db_id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(tpl.template_db_id);
+                            }}
                             className="p-2 hover:bg-red-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-red-400"
                             title="Template löschen"
                           >
@@ -421,23 +504,28 @@ function TemplatesPage() {
                           </button>
                         </div>
                       </div>
-                      <div className="text-sm text-gray-300 whitespace-pre-wrap">
-                        <div data-color-mode="dark">
-                          <MDEditor.Markdown
-                            source={tpl.text}
-                            rehypePlugins={[[rehypeSanitize]]}
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          onClick={() => handleSelect(tpl.id)}
-                          className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-                        >
-                          <span>Mit diesem Template fortfahren</span>
-                          <FaArrowRight />
-                        </button>
-                      </div>
+
+                      {isExpanded && (
+                        <>
+                          <div className="text-sm text-gray-300 whitespace-pre-wrap mb-4">
+                            <div data-color-mode="dark">
+                              <MDEditor.Markdown
+                                source={tpl.text}
+                                rehypePlugins={[[rehypeSanitize]]}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() => handleSelect(tpl.id)}
+                              className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                            >
+                              <span>Mit diesem Template fortfahren</span>
+                              <FaArrowRight />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -449,14 +537,11 @@ function TemplatesPage() {
 
       {/* Default Templates Section */}
       <div>
-        <h3 className="text-xl font-semibold text-purple-300 mb-4 flex items-center">
-          <FaBookMedical className="mr-2" />
-          Standardvorlagen
-        </h3>
         <div className="space-y-6">
           {defaultTemplates.map((tpl) => {
             const isSelected = tpl.id === selectedTemplateId;
             const isCurrentlyEditing = isEditing === tpl.id;
+            const isExpanded = expandedTemplates.has(tpl.id);
             // Check if this is an override of a default template
             const isOverride = tpl.is_default_override === true;
 
@@ -537,19 +622,38 @@ function TemplatesPage() {
                 ) : (
                   <>
                     <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="text-xl font-semibold text-purple-300 mb-1">
-                          {tpl.title}
-                        </h3>
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => toggleTemplateExpansion(tpl.id)}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-xl font-semibold text-purple-300 hover:text-purple-200 transition-colors mb-1">
+                            {tpl.title}
+                          </h3>
+                          {isExpanded ? (
+                            <FaChevronUp className="text-gray-400 text-sm" />
+                          ) : (
+                            <FaChevronDown className="text-gray-400 text-sm" />
+                          )}
+                        </div>
                         {isOverride && (
                           <div className="text-xs text-blue-400 mb-2 flex items-center">
                             <span className="mr-1">●</span> Angepasste Version
                           </div>
                         )}
+                        {!isExpanded && (
+                          <div className="text-xs text-gray-500 mt-1 truncate">
+                            {tpl.text.replace(/[#*_`]/g, "").substring(0, 100)}
+                            ...
+                          </div>
+                        )}
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2 ml-4">
                         <button
-                          onClick={() => handleStartEditing(tpl)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartEditing(tpl);
+                          }}
                           className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-blue-400"
                           title="Template bearbeiten"
                         >
@@ -557,23 +661,28 @@ function TemplatesPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-300 whitespace-pre-wrap">
-                      <div data-color-mode="dark">
-                        <MDEditor.Markdown
-                          source={tpl.text}
-                          rehypePlugins={[[rehypeSanitize]]}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        onClick={() => handleSelect(tpl.id)}
-                        className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-                      >
-                        <span>Mit diesem Template fortfahren</span>
-                        <FaArrowRight />
-                      </button>
-                    </div>
+
+                    {isExpanded && (
+                      <>
+                        <div className="text-sm text-gray-300 whitespace-pre-wrap mb-4">
+                          <div data-color-mode="dark">
+                            <MDEditor.Markdown
+                              source={tpl.text}
+                              rehypePlugins={[[rehypeSanitize]]}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => handleSelect(tpl.id)}
+                            className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                          >
+                            <span>Mit diesem Template fortfahren</span>
+                            <FaArrowRight />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import func, extract
 from typing import List, Optional
 from ..core.database import get_db
 from ..models.report_model import Report
@@ -9,7 +10,7 @@ from ..core.security import get_current_user_id
 from ..models.user_model import User
 from ..data.templates import get_template_by_id
 from ..services.pdf_service import generate_pdf
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 
 router = APIRouter()
@@ -163,3 +164,56 @@ async def update_report(
     db.refresh(report)
     
     return report
+
+
+@router.get("/analytics/timeline", response_model=dict)
+async def get_reports_timeline(
+        days: Optional[int] = 30,
+        db: Session = Depends(get_db),
+        current_user_id: int = Depends(get_current_user_id)
+):
+    """
+    Get timeline data for reports created over the specified number of days
+    """
+    # Calculate the start date
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=days-1)
+    
+    # Query reports grouped by date
+    query = (
+        db.query(
+            func.date(Report.created_at).label('date'),
+            func.count(Report.id).label('count')
+        )
+        .filter(
+            Report.user_id == current_user_id,
+            func.date(Report.created_at) >= start_date,
+            func.date(Report.created_at) <= end_date
+        )
+        .group_by(func.date(Report.created_at))
+        .order_by(func.date(Report.created_at))
+    )
+    
+    results = query.all()
+    
+    # Create a complete date range with zeros for missing dates
+    date_counts = {}
+    for result in results:
+        date_counts[result.date] = result.count
+    
+    # Generate labels and data for the chart
+    labels = []
+    counts = []
+    
+    current_date = start_date
+    while current_date <= end_date:
+        labels.append(current_date.strftime("%b %d"))
+        counts.append(date_counts.get(current_date, 0))
+        current_date += timedelta(days=1)
+    
+    return {
+        "labels": labels,
+        "counts": counts,
+        "period": f"Last {days} days",
+        "total_reports": sum(counts)
+    }

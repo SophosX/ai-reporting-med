@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     # Authentication settings
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours (8 * 60 minutes)
     
     # Database settings
     SQLALCHEMY_DATABASE_URI: str

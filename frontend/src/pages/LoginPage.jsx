@@ -11,8 +11,42 @@ function LoginPage() {
   const [regEmail, setRegEmail] = useState("");
   const [regUsername, setRegUsername] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regPasswordConfirm, setRegPasswordConfirm] = useState("");
+  const [regErrors, setRegErrors] = useState({});
 
   const navigate = useNavigate();
+
+  // Validation for registration form
+  const validateRegistration = () => {
+    const errors = {};
+
+    if (!regUsername.trim()) {
+      errors.username = "Username is required";
+    } else if (regUsername.length < 3) {
+      errors.username = "Username must be at least 3 characters long";
+    }
+
+    if (!regEmail.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (!regPassword) {
+      errors.password = "Password is required";
+    } else if (regPassword.length < 6) {
+      errors.password = "Password must be at least 6 characters long";
+    }
+
+    if (!regPasswordConfirm) {
+      errors.passwordConfirm = "Please confirm your password";
+    } else if (regPassword !== regPasswordConfirm) {
+      errors.passwordConfirm = "Passwords do not match";
+    }
+
+    setRegErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -40,6 +74,15 @@ function LoginPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+
+    // Clear previous errors
+    setRegErrors({});
+
+    // Validate form
+    if (!validateRegistration()) {
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
@@ -48,6 +91,7 @@ function LoginPage() {
           username: regUsername,
           email: regEmail,
           password: regPassword,
+          password_confirm: regPasswordConfirm,
         }),
       });
       const data = await response.json();
@@ -57,6 +101,8 @@ function LoginPage() {
         setRegUsername("");
         setRegEmail("");
         setRegPassword("");
+        setRegPasswordConfirm("");
+        setRegErrors({});
 
         // Show success message and switch to login tab
         toast.success("Registration successful! Please login.");
@@ -65,7 +111,22 @@ function LoginPage() {
         // Pre-fill the login form with the email
         setIdentifier(regEmail);
       } else {
-        toast.error(data.detail || "Registration failed");
+        // Handle specific error messages from the backend
+        if (data.detail) {
+          if (data.detail.includes("Username already exists")) {
+            setRegErrors({ username: data.detail });
+          } else if (
+            data.detail.includes("Email address is already registered")
+          ) {
+            setRegErrors({ email: data.detail });
+          } else if (data.detail.includes("Passwords do not match")) {
+            setRegErrors({ passwordConfirm: data.detail });
+          } else {
+            toast.error(data.detail);
+          }
+        } else {
+          toast.error("Registration failed. Please try again.");
+        }
       }
     } catch (error) {
       console.error("Registration error:", error);
@@ -150,9 +211,16 @@ function LoginPage() {
                 required
                 value={regUsername}
                 onChange={(e) => setRegUsername(e.target.value)}
-                className="w-full p-2 bg-gray-700 rounded"
+                className={`w-full p-2 bg-gray-700 rounded border ${
+                  regErrors.username ? "border-red-500" : "border-gray-600"
+                }`}
                 placeholder="Benutzername eingeben"
               />
+              {regErrors.username && (
+                <p className="text-red-400 text-sm mt-1">
+                  {regErrors.username}
+                </p>
+              )}
             </div>
             <div className="mb-4">
               <label className="block mb-1">E-Mail</label>
@@ -161,9 +229,14 @@ function LoginPage() {
                 required
                 value={regEmail}
                 onChange={(e) => setRegEmail(e.target.value)}
-                className="w-full p-2 bg-gray-700 rounded"
+                className={`w-full p-2 bg-gray-700 rounded border ${
+                  regErrors.email ? "border-red-500" : "border-gray-600"
+                }`}
                 placeholder="E-Mail eingeben"
               />
+              {regErrors.email && (
+                <p className="text-red-400 text-sm mt-1">{regErrors.email}</p>
+              )}
             </div>
             <div className="mb-4">
               <label className="block mb-1">Passwort</label>
@@ -172,9 +245,36 @@ function LoginPage() {
                 required
                 value={regPassword}
                 onChange={(e) => setRegPassword(e.target.value)}
-                className="w-full p-2 bg-gray-700 rounded"
-                placeholder="Passwort eingeben"
+                className={`w-full p-2 bg-gray-700 rounded border ${
+                  regErrors.password ? "border-red-500" : "border-gray-600"
+                }`}
+                placeholder="Passwort eingeben (min. 6 Zeichen)"
               />
+              {regErrors.password && (
+                <p className="text-red-400 text-sm mt-1">
+                  {regErrors.password}
+                </p>
+              )}
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1">Passwort bestätigen</label>
+              <input
+                type="password"
+                required
+                value={regPasswordConfirm}
+                onChange={(e) => setRegPasswordConfirm(e.target.value)}
+                className={`w-full p-2 bg-gray-700 rounded border ${
+                  regErrors.passwordConfirm
+                    ? "border-red-500"
+                    : "border-gray-600"
+                }`}
+                placeholder="Passwort bestätigen"
+              />
+              {regErrors.passwordConfirm && (
+                <p className="text-red-400 text-sm mt-1">
+                  {regErrors.passwordConfirm}
+                </p>
+              )}
             </div>
             <button
               type="submit"

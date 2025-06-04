@@ -9,8 +9,6 @@ import {
   FaSave,
   FaUndo,
   FaCheck,
-  FaEye,
-  FaEyeSlash,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import MDEditor from "@uiw/react-md-editor";
@@ -18,7 +16,7 @@ import rehypeSanitize from "rehype-sanitize";
 import { Link, useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
-import * as diff from 'diff';
+import * as diff from "diff";
 
 /**
  * ReportCard component for displaying a medical report
@@ -33,7 +31,6 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   const [editedReportText, setEditedReportText] = useState(
     report?.report_text || ""
   );
-  const [showDiff, setShowDiff] = useState(false);
   const [templateText, setTemplateText] = useState("");
   const navigate = useNavigate();
 
@@ -208,7 +205,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   const renderDiff = (text1, text2) => {
     console.log("Template text:", text1); // Debug
     console.log("Report text:", text2); // Debug
-    
+
     if (!text1 || !text2) {
       console.log("Missing text:", { text1: !!text1, text2: !!text2 }); // Debug
       return null;
@@ -216,7 +213,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
 
     const differences = diff.diffWords(text1, text2);
     console.log("Differences:", differences); // Debug
-    
+
     return differences.map((part, index) => {
       let className = "";
       if (part.added) {
@@ -253,15 +250,6 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          {console.log("Template text available:", !!templateText)} {/* Debug */}
-          {console.log("Show diff state:", showDiff)} {/* Debug */}
-          <button
-            onClick={() => setShowDiff(!showDiff)}
-            className="p-2 hover:bg-purple-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-purple-400"
-            title={showDiff ? "Differenz ausblenden" : "Differenz anzeigen"}
-          >
-            {showDiff ? <FaEyeSlash /> : <FaEye />}
-          </button>
           <button
             title="PDF herunterladen"
             onClick={handleDownloadPdf}
@@ -288,7 +276,8 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
             to={`/reports/${report.id}`}
             className="text-blue-400 hover:text-blue-300 text-lg font-medium transition-colors"
           >
-            Bericht #{report.id} <span className="text-xs">→ Details anzeigen</span>
+            Bericht #{report.id}{" "}
+            <span className="text-xs">→ Details anzeigen</span>
           </Link>
         </div>
       )}
@@ -393,7 +382,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
         </div>
 
         {/* Diff View */}
-        {showDiff && report.template_text && (
+        {report.template_text && (
           <div className="mt-6 pt-6 border-t border-gray-700/50">
             <h4 className="text-lg font-semibold text-purple-400 mb-4">
               Vergleich mit Template

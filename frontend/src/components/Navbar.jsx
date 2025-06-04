@@ -38,20 +38,26 @@ function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand */}
-          <div className="flex items-center space-x-3">
+          <Link
+            to="/"
+            className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-200"
+          >
             <FaNotesMedical className="text-white text-2xl" />
             <span className="text-white font-bold text-xl">
               Medizinische Berichte
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center justify-between flex-1 ml-10">
             <div className="flex space-x-4">
               {isLoggedIn && (
                 <>
-                  <NavLink to="/" icon={FaHome} label="Dashboard" />
-                  <NavLink to="/reports/new" icon={FaPlus} label="Neuer Bericht" />
+                  <NavLink
+                    to="/reports/new"
+                    icon={FaPlus}
+                    label="Neuer Bericht"
+                  />
                   <NavLink
                     to="/reports/history"
                     icon={FaHistory}
@@ -99,8 +105,11 @@ function Navbar() {
           <div className="md:hidden animate-fade-in py-3 space-y-2 border-t border-gray-700">
             {isLoggedIn ? (
               <>
-                <NavLink to="/" icon={FaHome} label="Dashboard" />
-                <NavLink to="/reports/new" icon={FaPlus} label="Neuer Bericht" />
+                <NavLink
+                  to="/reports/new"
+                  icon={FaPlus}
+                  label="Neuer Bericht"
+                />
                 <NavLink
                   to="/reports/history"
                   icon={FaHistory}

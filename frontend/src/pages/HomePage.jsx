@@ -9,9 +9,9 @@ import {
 import { authenticatedFetch } from "../utils/auth";
 import { toast } from "react-toastify";
 import API_URL from "../utils/apiConfig";
+import ReportsChart from "../components/ReportsChart";
 
 function HomePage() {
-  const [totalReports, setTotalReports] = useState(0);
   const [recentReports, setRecentReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,18 +19,6 @@ function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch reports count
-        const countResponse = await authenticatedFetch(
-          `${API_URL}/reports/stats/count`
-        );
-
-        if (!countResponse.ok) {
-          throw new Error("Failed to fetch reports count");
-        }
-
-        const countData = await countResponse.json();
-        setTotalReports(countData.total);
-
         // Fetch recent reports
         const recentResponse = await authenticatedFetch(
           `${API_URL}/reports/recent`
@@ -71,26 +59,7 @@ function HomePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Total Reports */}
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-500 bg-opacity-25 w-14 h-14 flex items-center justify-center">
-              <FaFileMedical className="text-2xl text-blue-400" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-400">Gesamtberichte</p>
-              {loading ? (
-                <p className="text-2xl font-semibold">Laden...</p>
-              ) : error ? (
-                <p className="text-red-400 text-sm">Fehler beim Laden</p>
-              ) : (
-                <p className="text-2xl font-semibold">{totalReports}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Create New Report */}
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
           <a
@@ -134,6 +103,11 @@ function HomePage() {
         </div>
       </div>
 
+      {/* Reports Analytics Chart */}
+      <div className="mb-8">
+        <ReportsChart />
+      </div>
+
       {/* Recent Reports */}
       <div className="bg-gray-800 rounded-xl shadow-lg">
         <div className="p-8">
@@ -144,15 +118,13 @@ function HomePage() {
                 Letzte Berichte
               </h2>
             </div>
-            {totalReports > 3 && (
-              <a
-                href="/reports/history"
-                className="text-blue-400 hover:text-blue-300 transition-colors duration-200 flex items-center space-x-2"
-              >
-                <span>Alle Berichte anzeigen</span>
-                <FaArrowRight />
-              </a>
-            )}
+            <a
+              href="/reports/history"
+              className="text-blue-400 hover:text-blue-300 transition-colors duration-200 flex items-center space-x-2"
+            >
+              <span>Alle Berichte anzeigen</span>
+              <FaArrowRight />
+            </a>
           </div>
 
           {loading ? (
@@ -167,7 +139,8 @@ function HomePage() {
             <div className="text-center py-12">
               <FaFileMedical className="text-5xl text-gray-600 mb-4 mx-auto" />
               <p className="text-gray-400 mb-6">
-                Noch keine Berichte vorhanden. Erstellen Sie Ihren ersten Bericht!
+                Noch keine Berichte vorhanden. Erstellen Sie Ihren ersten
+                Bericht!
               </p>
               <a
                 href="/reports/new"
