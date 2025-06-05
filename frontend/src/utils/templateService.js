@@ -131,9 +131,25 @@ export const updateDefaultTemplate = async (templateId, templateData) => {
   }
 };
 
-// Deprecated - No longer used as the reset functionality has been removed
-// Keeping the function signature to prevent any unexpected references but making it clear it's not functional
+// Updated to handle deletion of default templates and their overrides
 export const deleteDefaultTemplate = async (templateId) => {
-  console.warn("deleteDefaultTemplate is deprecated and no longer functional");
-  throw new Error("This functionality has been removed");
+  try {
+    const response = await authenticatedFetch(
+      `${API_URL}/templates/${templateId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      const errorMessage = errorData.detail || "Failed to delete template";
+      throw new Error(errorMessage);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting default template:", error);
+    throw error;
+  }
 };

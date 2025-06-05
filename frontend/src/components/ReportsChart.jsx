@@ -32,51 +32,93 @@ const ReportsChart = () => {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedPeriod, setSelectedPeriod] = useState("weeks"); // Default to weeks
+  const [periodData, setPeriodData] = useState(null);
+
+  const fetchChartData = async (period) => {
+    try {
+      setLoading(true);
+      const response = await authenticatedFetch(
+        `${API_URL}/reports/analytics/timeline?period=${period}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch chart data");
+      }
+
+      const data = await response.json();
+      setPeriodData(data);
+      processChartData(data);
+    } catch (err) {
+      console.error("Error fetching chart data:", err);
+      setError(err.message);
+      // Generate mock data for development if API endpoint doesn't exist
+      generateMockData(period);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        const response = await authenticatedFetch(
-          `${API_URL}/reports/analytics/timeline`
+    fetchChartData(selectedPeriod);
+  }, [selectedPeriod]);
+
+  const generateMockData = (period) => {
+    let labels = [];
+    let counts = [];
+
+    if (period === "days") {
+      // Generate mock data for the last 30 days
+      const today = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        labels.push(
+          date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
         );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch chart data");
-        }
-
-        const data = await response.json();
-        processChartData(data);
-      } catch (err) {
-        console.error("Error fetching chart data:", err);
-        setError(err.message);
-        // Generate mock data for development if API endpoint doesn't exist
-        generateMockData();
-      } finally {
-        setLoading(false);
+        counts.push(Math.floor(Math.random() * 8) + 1);
       }
-    };
+    } else if (period === "weeks") {
+      // Generate mock data for the last 8 weeks
+      const today = new Date();
+      for (let i = 7; i >= 0; i--) {
+        const weekStart = new Date(today);
+        weekStart.setDate(weekStart.getDate() - i * 7 - today.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
 
-    fetchChartData();
-  }, []);
-
-  const generateMockData = () => {
-    // Generate mock data for the last 30 days
-    const days = [];
-    const counts = [];
-    const today = new Date();
-
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      days.push(
-        date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      );
-      // Generate random counts with some realistic patterns
-      counts.push(Math.floor(Math.random() * 8) + 1);
+        labels.push(
+          `${weekStart.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })} - ${weekEnd.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          })}`
+        );
+        counts.push(Math.floor(Math.random() * 15) + 2);
+      }
+    } else if (period === "months") {
+      // Generate mock data for the last 6 months
+      const today = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const monthDate = new Date(
+          today.getFullYear(),
+          today.getMonth() - i,
+          1
+        );
+        labels.push(
+          monthDate.toLocaleDateString("en-US", {
+            month: "short",
+            year: "numeric",
+          })
+        );
+        counts.push(Math.floor(Math.random() * 50) + 10);
+      }
     }
 
     const processedData = {
-      labels: days,
+      labels: labels,
       datasets: [
         {
           label: "Erstellte Berichte",
@@ -125,6 +167,10 @@ const ReportsChart = () => {
     setChartData(processedData);
   };
 
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period);
+  };
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -134,10 +180,10 @@ const ReportsChart = () => {
         labels: {
           color: "#E5E7EB",
           font: {
-            size: 14,
+            size: 12,
             weight: "500",
           },
-          padding: 20,
+          padding: 15,
         },
       },
       tooltip: {
@@ -151,7 +197,7 @@ const ReportsChart = () => {
         displayColors: true,
         callbacks: {
           title: (context) => {
-            return `Datum: ${context[0].label}`;
+            return `Zeitraum: ${context[0].label}`;
           },
           label: (context) => {
             return `Berichte: ${context.parsed.y}`;
@@ -172,7 +218,7 @@ const ReportsChart = () => {
         ticks: {
           color: "#9CA3AF",
           font: {
-            size: 12,
+            size: 10,
           },
           maxRotation: 45,
         },
@@ -189,7 +235,7 @@ const ReportsChart = () => {
         ticks: {
           color: "#9CA3AF",
           font: {
-            size: 12,
+            size: 10,
           },
           stepSize: 1,
         },
@@ -207,14 +253,16 @@ const ReportsChart = () => {
 
   if (loading) {
     return (
-      <div className="bg-gray-800 rounded-xl shadow-lg p-8">
-        <div className="flex items-center space-x-3 mb-6">
-          <FaChartLine className="text-2xl text-green-400" />
-          <h2 className="text-2xl font-bold text-green-400">
-            Bericht Analytik
-          </h2>
+      <div className="bg-gray-800 rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <FaChartLine className="text-xl text-green-400" />
+            <h2 className="text-xl font-bold text-green-400">
+              Bericht Analytik
+            </h2>
+          </div>
         </div>
-        <div className="h-64 flex items-center justify-center">
+        <div className="h-48 flex items-center justify-center">
           <p className="text-gray-400">Lade Chart-Daten...</p>
         </div>
       </div>
@@ -223,14 +271,16 @@ const ReportsChart = () => {
 
   if (error && !chartData) {
     return (
-      <div className="bg-gray-800 rounded-xl shadow-lg p-8">
-        <div className="flex items-center space-x-3 mb-6">
-          <FaChartLine className="text-2xl text-green-400" />
-          <h2 className="text-2xl font-bold text-green-400">
-            Bericht Analytik
-          </h2>
+      <div className="bg-gray-800 rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <FaChartLine className="text-xl text-green-400" />
+            <h2 className="text-xl font-bold text-green-400">
+              Bericht Analytik
+            </h2>
+          </div>
         </div>
-        <div className="h-64 flex items-center justify-center">
+        <div className="h-48 flex items-center justify-center">
           <p className="text-red-400">Fehler beim Laden der Chart-Daten</p>
         </div>
       </div>
@@ -238,14 +288,58 @@ const ReportsChart = () => {
   }
 
   return (
-    <div className="bg-gray-800 rounded-xl shadow-lg p-8">
-      <div className="flex items-center space-x-3 mb-6">
-        <FaChartLine className="text-2xl text-green-400" />
-        <h2 className="text-2xl font-bold text-green-400">Bericht Analytik</h2>
+    <div className="bg-gray-800 rounded-xl shadow-lg p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <FaChartLine className="text-xl text-green-400" />
+          <h2 className="text-xl font-bold text-green-400">Bericht Analytik</h2>
+          {periodData && (
+            <span className="text-sm text-gray-400">({periodData.period})</span>
+          )}
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handlePeriodChange("days")}
+            className={`px-3 py-1 text-xs rounded-md transition-colors duration-200 ${
+              selectedPeriod === "days"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            Tage
+          </button>
+          <button
+            onClick={() => handlePeriodChange("weeks")}
+            className={`px-3 py-1 text-xs rounded-md transition-colors duration-200 ${
+              selectedPeriod === "weeks"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            Wochen
+          </button>
+          <button
+            onClick={() => handlePeriodChange("months")}
+            className={`px-3 py-1 text-xs rounded-md transition-colors duration-200 ${
+              selectedPeriod === "months"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            Monate
+          </button>
+        </div>
       </div>
-      <div className="h-64">
+      <div className="h-48">
         {chartData && <Line data={chartData} options={options} />}
       </div>
+      {periodData && (
+        <div className="mt-4 text-center">
+          <p className="text-sm text-gray-400">
+            Gesamt: {periodData.total_reports} Berichte
+          </p>
+        </div>
+      )}
     </div>
   );
 };

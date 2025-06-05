@@ -102,16 +102,17 @@ async def remove_template(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Delete a template - for default templates, never delete the default template itself or any overrides"""
-    # First check if the template exists
+    """Delete a template - for default templates, delete user overrides to revert to default"""
+    # First check if the template exists for this user
     template = get_template_by_id(template_id, db=db, user_id=current_user_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     
-    # Only allow deletion of user-created templates (not overrides)
+    # Handle user-created custom templates (not overrides)
     if template.get("user_created", False) and not template.get("is_default_override", False):
         user_template = db.query(UserTemplate).filter(
-            UserTemplate.id == template.get("template_db_id")
+            UserTemplate.id == template.get("template_db_id"),
+            UserTemplate.user_id == current_user_id
         ).first()
         
         if not user_template:
@@ -121,10 +122,58 @@ async def remove_template(
         db.commit()
         
         return {"detail": "Template successfully deleted"}
+    
+    # Handle default template overrides - delete the override to revert to default
+    elif template.get("is_default_override", False):
+        # This is a user override, delete it to revert to default
+        user_override = db.query(UserTemplate).filter(
+            UserTemplate.id == template.get("template_db_id"),
+            UserTemplate.user_id == current_user_id,
+            UserTemplate.is_default_override == True
+        ).first()
         
-    # If we reach here, it's a template we cannot delete
-    # (either a default template or an override)
-    return {"detail": "Standard templates and their overrides cannot be deleted"}
+        if user_override:
+            db.delete(user_override)
+            db.commit()
+            
+            return {"detail": "Template override deleted, reverted to default template"}
+        else:
+            raise HTTPException(status_code=404, detail="Template override not found")
+    
+    # Handle original default templates (no user overrides) - hide from user's view
+    else:
+        # This is an original default template, create a "deleted" marker
+        # Check if a deleted override already exists
+        existing_deleted_override = db.query(UserTemplate).filter(
+            UserTemplate.user_id == current_user_id,
+            UserTemplate.default_template_id == template_id,
+            UserTemplate.is_default_override == True
+        ).first()
+        
+        if existing_deleted_override:
+            # Already hidden/deleted for this user
+            return {"detail": "Template already hidden from your view"}
+        
+        # Create a "deleted" marker by creating an override with a special flag
+        deleted_template_id = f"user-{current_user_id}-deleted-{template_id}"
+        
+        deleted_override = UserTemplate(
+            user_id=current_user_id,
+            template_id=deleted_template_id,
+            title="[DELETED]",
+            text="[DELETED]",
+            is_default_override=True,
+            default_template_id=template_id
+        )
+        
+        try:
+            db.add(deleted_override)
+            db.commit()
+            
+            return {"detail": "Template hidden from your view"}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to hide template: {str(e)}")
 
 @router.post("/{template_id}/override")
 async def override_default_template(

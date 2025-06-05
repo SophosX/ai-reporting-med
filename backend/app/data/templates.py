@@ -137,6 +137,7 @@ def get_all_templates(db: Session = None, user_id: int = None):
     
     # Get user-specific overrides and custom templates if user_id is provided
     user_overrides = {}
+    deleted_templates = set()
     if user_id:
         # Get overrides
         overrides = db.query(UserTemplate).filter(
@@ -145,8 +146,14 @@ def get_all_templates(db: Session = None, user_id: int = None):
         ).all()
         
         # Create a mapping of default_template_id to override
+        # Also track which templates have been deleted (marked with [DELETED])
         for override in overrides:
-            user_overrides[override.default_template_id] = override
+            if override.title == "[DELETED]" and override.text == "[DELETED]":
+                # This is a deleted template marker - exclude it from results
+                deleted_templates.add(override.default_template_id)
+            else:
+                # This is a regular override
+                user_overrides[override.default_template_id] = override
             
         # Get custom templates (not overrides)
         custom_templates = db.query(UserTemplate).filter(
@@ -166,8 +173,12 @@ def get_all_templates(db: Session = None, user_id: int = None):
                 "default_template_id": None
             })
     
-    # Combine default templates with user overrides
+    # Combine default templates with user overrides, excluding deleted templates
     for template in default_templates:
+        # Skip templates that have been deleted by the user
+        if template.template_id in deleted_templates:
+            continue
+            
         # Check if there's a user override for this template
         if template.template_id in user_overrides:
             override = user_overrides[template.template_id]

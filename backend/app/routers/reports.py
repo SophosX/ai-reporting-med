@@ -168,52 +168,141 @@ async def update_report(
 
 @router.get("/analytics/timeline", response_model=dict)
 async def get_reports_timeline(
-        days: Optional[int] = 30,
+        period: Optional[str] = "weeks",
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
     """
-    Get timeline data for reports created over the specified number of days
+    Get timeline data for reports created over different time periods
+    period options: 'days', 'weeks', 'months'
     """
-    # Calculate the start date
-    end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=days-1)
+    end_date = datetime.now()
     
-    # Query reports grouped by date
-    query = (
-        db.query(
-            func.date(Report.created_at).label('date'),
-            func.count(Report.id).label('count')
+    if period == "days":
+        # Show last 30 days
+        start_date = end_date - timedelta(days=29)
+        query = (
+            db.query(
+                func.date(Report.created_at).label('date'),
+                func.count(Report.id).label('count')
+            )
+            .filter(
+                Report.user_id == current_user_id,
+                func.date(Report.created_at) >= start_date.date(),
+                func.date(Report.created_at) <= end_date.date()
+            )
+            .group_by(func.date(Report.created_at))
+            .order_by(func.date(Report.created_at))
         )
-        .filter(
+        
+        results = query.all()
+        date_counts = {result.date: result.count for result in results}
+        
+        labels = []
+        counts = []
+        current_date = start_date.date()
+        
+        while current_date <= end_date.date():
+            labels.append(current_date.strftime("%b %d"))
+            counts.append(date_counts.get(current_date, 0))
+            current_date += timedelta(days=1)
+            
+        return {
+            "labels": labels,
+            "counts": counts,
+            "period": "Last 30 days",
+            "total_reports": sum(counts)
+        }
+    
+    elif period == "weeks":
+        # Show last 8 weeks
+        start_date = end_date - timedelta(weeks=7)
+        
+        # Get all reports in the time range
+        reports = db.query(Report).filter(
             Report.user_id == current_user_id,
-            func.date(Report.created_at) >= start_date,
-            func.date(Report.created_at) <= end_date
+            Report.created_at >= start_date,
+            Report.created_at <= end_date
+        ).all()
+        
+        # Group by week
+        week_counts = {}
+        for report in reports:
+            # Calculate week start (Monday) for the report date
+            report_date = report.created_at.date()
+            days_since_monday = report_date.weekday()
+            week_start = report_date - timedelta(days=days_since_monday)
+            
+            if week_start not in week_counts:
+                week_counts[week_start] = 0
+            week_counts[week_start] += 1
+        
+        # Generate labels and data for the last 8 weeks
+        labels = []
+        counts = []
+        current_week_start = start_date.date()
+        current_week_start = current_week_start - timedelta(days=current_week_start.weekday())
+        
+        for i in range(8):
+            week_end = current_week_start + timedelta(days=6)
+            labels.append(f"{current_week_start.strftime('%b %d')} - {week_end.strftime('%b %d')}")
+            counts.append(week_counts.get(current_week_start, 0))
+            current_week_start += timedelta(weeks=1)
+            
+        return {
+            "labels": labels,
+            "counts": counts,
+            "period": "Last 8 weeks",
+            "total_reports": sum(counts)
+        }
+    
+    elif period == "months":
+        # Show last 6 months
+        start_date = end_date.replace(day=1) - timedelta(days=150)  # Go back roughly 5 months
+        
+        query = (
+            db.query(
+                extract('year', Report.created_at).label('year'),
+                extract('month', Report.created_at).label('month'),
+                func.count(Report.id).label('count')
+            )
+            .filter(
+                Report.user_id == current_user_id,
+                Report.created_at >= start_date
+            )
+            .group_by(
+                extract('year', Report.created_at),
+                extract('month', Report.created_at)
+            )
+            .order_by(
+                extract('year', Report.created_at),
+                extract('month', Report.created_at)
+            )
         )
-        .group_by(func.date(Report.created_at))
-        .order_by(func.date(Report.created_at))
-    )
+        
+        results = query.all()
+        month_counts = {(int(result.year), int(result.month)): result.count for result in results}
+        
+        # Generate labels and data for the last 6 months
+        labels = []
+        counts = []
+        current_date = end_date.replace(day=1)
+        
+        for i in range(6):
+            month_date = current_date - timedelta(days=32 * i)
+            month_date = month_date.replace(day=1)
+            year = month_date.year
+            month = month_date.month
+            
+            labels.insert(0, month_date.strftime("%b %Y"))
+            counts.insert(0, month_counts.get((year, month), 0))
+            
+        return {
+            "labels": labels,
+            "counts": counts,
+            "period": "Last 6 months",
+            "total_reports": sum(counts)
+        }
     
-    results = query.all()
-    
-    # Create a complete date range with zeros for missing dates
-    date_counts = {}
-    for result in results:
-        date_counts[result.date] = result.count
-    
-    # Generate labels and data for the chart
-    labels = []
-    counts = []
-    
-    current_date = start_date
-    while current_date <= end_date:
-        labels.append(current_date.strftime("%b %d"))
-        counts.append(date_counts.get(current_date, 0))
-        current_date += timedelta(days=1)
-    
-    return {
-        "labels": labels,
-        "counts": counts,
-        "period": f"Last {days} days",
-        "total_reports": sum(counts)
-    }
+    else:
+        raise HTTPException(status_code=400, detail="Invalid period. Use 'days', 'weeks', or 'months'")

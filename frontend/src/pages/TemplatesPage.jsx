@@ -189,15 +189,44 @@ function TemplatesPage() {
     }
   };
 
-  const handleDelete = async (templateId) => {
-    if (!window.confirm("Möchten Sie dieses Template wirklich löschen?")) {
+  const handleDelete = async (
+    templateId,
+    isDefaultTemplate = false,
+    isOverride = false
+  ) => {
+    // Different confirmation messages based on template type
+    let confirmMessage;
+    if (isDefaultTemplate && isOverride) {
+      confirmMessage =
+        "Möchten Sie Ihre Anpassungen für dieses Template wirklich löschen? Es wird auf die Standardversion zurückgesetzt.";
+    } else if (isDefaultTemplate) {
+      confirmMessage =
+        "Möchten Sie dieses Standard-Template wirklich aus Ihrer Ansicht entfernen?";
+    } else {
+      confirmMessage = "Möchten Sie dieses Template wirklich löschen?";
+    }
+
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
     try {
-      // Only handle user template deletion
-      await deleteUserTemplate(templateId);
-      toast.success("Template erfolgreich gelöscht");
+      if (isDefaultTemplate) {
+        // Handle default template deletion (removal from user's view or override deletion)
+        await deleteDefaultTemplate(templateId);
+        if (isOverride) {
+          toast.success(
+            "Template-Anpassungen erfolgreich gelöscht - auf Standard zurückgesetzt"
+          );
+        } else {
+          toast.success("Template erfolgreich aus Ihrer Ansicht entfernt");
+        }
+      } else {
+        // Handle user template deletion
+        await deleteUserTemplate(templateId);
+        toast.success("Template erfolgreich gelöscht");
+      }
+
       refreshTemplates();
     } catch (err) {
       toast.error(`Fehler beim Löschen: ${err.message}`);
@@ -658,6 +687,24 @@ function TemplatesPage() {
                           title="Template bearbeiten"
                         >
                           <FaEdit />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(
+                              isOverride ? tpl.default_template_id : tpl.id,
+                              true,
+                              isOverride
+                            );
+                          }}
+                          className="p-2 hover:bg-red-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-red-400"
+                          title={
+                            isOverride
+                              ? "Anpassungen löschen (auf Standard zurücksetzen)"
+                              : "Template aus Ansicht entfernen"
+                          }
+                        >
+                          <FaTrashAlt />
                         </button>
                       </div>
                     </div>
