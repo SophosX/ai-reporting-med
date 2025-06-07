@@ -5,6 +5,7 @@ import {
   FaFileMedical,
   FaPlus,
   FaHistory,
+  FaClipboardList,
 } from "react-icons/fa";
 import { authenticatedFetch } from "../utils/auth";
 import { toast } from "react-toastify";
@@ -59,7 +60,7 @@ function HomePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {/* Create New Report */}
         <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
           <a
@@ -95,6 +96,27 @@ function HomePage() {
                 <p className="text-lg font-semibold">Alle Berichte anzeigen</p>
                 <p className="text-sm text-gray-400">
                   Auf Ihre Berichtshistorie zugreifen
+                </p>
+              </div>
+            </div>
+            <FaArrowRight className="text-gray-400" />
+          </a>
+        </div>
+
+        {/* Templates */}
+        <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
+          <a
+            href="/templates"
+            className="flex items-center justify-between hover:bg-gray-700 p-2 rounded transition duration-200"
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-orange-500 bg-opacity-25 w-14 h-14 flex items-center justify-center">
+                <FaClipboardList className="text-2xl text-orange-400" />
+              </div>
+              <div className="ml-4">
+                <p className="text-lg font-semibold">Vorlagen</p>
+                <p className="text-sm text-gray-400">
+                  Vorgefertigte Berichtsvorlagen verwenden
                 </p>
               </div>
             </div>

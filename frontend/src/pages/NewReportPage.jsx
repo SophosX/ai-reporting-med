@@ -379,6 +379,15 @@ function NewReportPage() {
               <p className="text-xs text-gray-500 mt-1">
                 Definiert das Verhalten der KI bei der Berichterstellung
               </p>
+              <p className="text-xs text-gray-400 mt-2 font-medium">
+                Prüfe auf inkonsistenzen und wenn du welche findest schreibe das
+                unter den Befund mit "Achtung, folgende Inkonsistenz korrigiert:{" "}
+                {selectedTemplateId
+                  ? templates.find((t) => t.id === selectedTemplateId)?.title ||
+                    "unbekanntes Template"
+                  : "ohne Template"}
+                "
+              </p>
             </div>
           )}
 

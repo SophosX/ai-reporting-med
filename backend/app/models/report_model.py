@@ -13,4 +13,10 @@ class Report(Base):
     template_text = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))
+    
+    # Word count metrics
+    total_words = Column(Integer, default=0)
+    generated_words = Column(Integer, default=0)
+    saved_words = Column(Integer, default=0)
+    
     user = relationship("User", back_populates="reports")

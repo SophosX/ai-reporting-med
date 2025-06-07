@@ -10,6 +10,7 @@ import {
 import { toast } from "react-toastify";
 import { authenticatedFetch } from "../utils/auth";
 import ReportCard from "../components/ReportCard";
+import WordCountMetrics from "../components/WordCountMetrics";
 import API_URL from "../utils/apiConfig";
 
 function ReportsHistoryPage() {
@@ -224,6 +225,15 @@ function ReportsHistoryPage() {
                           </span>
                           <div className="text-xs text-gray-500">{time}</div>
                         </div>
+                      </div>
+
+                      {/* Word Count Metrics - Compact View */}
+                      <div className="mb-3">
+                        <WordCountMetrics
+                          report={report}
+                          compact={true}
+                          showLabels={false}
+                        />
                       </div>
 
                       {/* Preview of input text */}

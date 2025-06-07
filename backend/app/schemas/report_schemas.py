@@ -18,6 +18,11 @@ class ReportOut(BaseModel):
     user_id: int
     template_id: Optional[str] = None
     template_text: Optional[str] = None
+    
+    # Word count metrics
+    total_words: int = 0
+    generated_words: int = 0
+    saved_words: int = 0
 
     class Config:
         from_attributes = True

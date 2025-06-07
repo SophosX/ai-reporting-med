@@ -17,6 +17,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
 import * as diff from "diff";
+import WordCountMetrics from "./WordCountMetrics";
 
 /**
  * ReportCard component for displaying a medical report
@@ -179,15 +180,14 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
         throw new Error("Failed to update report");
       }
 
+      // Get the updated report data from the backend response
+      const updatedReportData = await response.json();
+
       setIsEditing(false);
 
       if (onUpdate) {
-        // Create updated report object
-        const updatedReport = {
-          ...report,
-          report_text: editedReportText,
-        };
-        onUpdate(updatedReport);
+        // Use the complete updated report data from backend (includes recalculated word metrics)
+        onUpdate(updatedReportData);
       }
 
       toast.success("Report updated successfully");
@@ -291,6 +291,11 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
           <span className="text-sm font-medium text-gray-300">{date}</span>
           <div className="text-xs text-gray-500">{time}</div>
         </div>
+      </div>
+
+      {/* Word Count Metrics */}
+      <div className="mb-6">
+        <WordCountMetrics report={report} showLabels={true} compact={false} />
       </div>
 
       {/* Input Text Section */}

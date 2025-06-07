@@ -6,6 +6,7 @@ from ..core.database import get_db
 from ..models.report_model import Report
 from ..schemas.report_schemas import ReportCreate, ReportOut, ReportUpdate
 from ..services.openai_service import get_completion
+from ..services.word_count_service import update_report_word_metrics, count_words
 from ..core.security import get_current_user_id
 from ..models.user_model import User
 from ..data.templates import get_template_by_id
@@ -36,7 +37,7 @@ async def create_report(
         custom_prompt=report_data.custom_prompt
     )
 
-    # Save to database
+    # Create new report
     new_report = Report(
         user_id=current_user_id,
         input_text=report_data.input_text,
@@ -44,6 +45,11 @@ async def create_report(
         template_id=report_data.template_id,
         template_text=template_text
     )
+    
+    # Calculate and store word metrics
+    update_report_word_metrics(new_report)
+    
+    # Save to database
     db.add(new_report)
     db.commit()
     db.refresh(new_report)
@@ -158,6 +164,14 @@ async def update_report(
 
     # Update the report text
     report.report_text = report_data.report_text
+    
+    # Update word count metrics
+    new_total_words = count_words(report.report_text)
+    
+    # Keep generated_words unchanged (original AI contribution)
+    # Calculate saved_words as manual additions: total - original_ai_generated
+    report.total_words = new_total_words
+    report.saved_words = max(0, new_total_words - report.generated_words)
     
     # Save changes
     db.commit()
@@ -306,3 +320,43 @@ async def get_reports_timeline(
     
     else:
         raise HTTPException(status_code=400, detail="Invalid period. Use 'days', 'weeks', or 'months'")
+
+
+@router.get("/stats/word-counts", response_model=dict)
+async def get_word_count_stats(
+        db: Session = Depends(get_db),
+        current_user_id: int = Depends(get_current_user_id)
+):
+    """Get aggregate word count statistics for all user reports"""
+    
+    # Get all reports for the user
+    reports = db.query(Report).filter(Report.user_id == current_user_id).all()
+    
+    if not reports:
+        return {
+            "total_reports": 0,
+            "total_words": 0,
+            "total_generated_words": 0,
+            "total_saved_words": 0,
+            "average_words_per_report": 0,
+            "average_saved_per_report": 0
+        }
+    
+    # Calculate aggregates
+    total_words = sum(report.total_words for report in reports)
+    total_generated_words = sum(report.generated_words for report in reports)
+    total_saved_words = sum(report.saved_words for report in reports)
+    
+    # Calculate averages
+    report_count = len(reports)
+    average_words_per_report = round(total_words / report_count) if report_count > 0 else 0
+    average_saved_per_report = round(total_saved_words / report_count) if report_count > 0 else 0
+    
+    return {
+        "total_reports": report_count,
+        "total_words": total_words,
+        "total_generated_words": total_generated_words,
+        "total_saved_words": total_saved_words,
+        "average_words_per_report": average_words_per_report,
+        "average_saved_per_report": average_saved_per_report
+    }
