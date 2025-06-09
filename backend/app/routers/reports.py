@@ -47,7 +47,8 @@ async def create_report(
     )
     
     # Calculate and store word metrics
-    update_report_word_metrics(new_report)
+    # Pass the AI-generated text to properly track the original AI contribution
+    update_report_word_metrics(new_report, ai_generated_text=generated_text)
     
     # Save to database
     db.add(new_report)
@@ -165,13 +166,22 @@ async def update_report(
     # Update the report text
     report.report_text = report_data.report_text
     
-    # Update word count metrics
-    new_total_words = count_words(report.report_text)
+    # Update word count metrics following the new specification
+    from ..services.word_count_service import calculate_word_metrics, count_words
     
-    # Keep generated_words unchanged (original AI contribution)
-    # Calculate saved_words as manual additions: total - original_ai_generated
-    report.total_words = new_total_words
-    report.saved_words = max(0, new_total_words - report.generated_words)
+    # Calculate new metrics based on the edited text
+    input_words = getattr(report, 'input_words', 0) or count_words(report.input_text)
+    ai_generated_words = report.generated_words  # Keep original AI contribution unchanged
+    final_report_words = count_words(report.report_text)
+    
+    # Saved words = final report words - input words (words user didn't have to write)
+    saved_words = max(0, final_report_words - input_words)
+    
+    # Update the report metrics
+    report.input_words = input_words
+    report.total_words = final_report_words
+    report.saved_words = saved_words
+    # report.generated_words stays the same (original AI contribution)
     
     # Save changes
     db.commit()
@@ -342,21 +352,50 @@ async def get_word_count_stats(
             "average_saved_per_report": 0
         }
     
-    # Calculate aggregates
-    total_words = sum(report.total_words for report in reports)
-    total_generated_words = sum(report.generated_words for report in reports)
-    total_saved_words = sum(report.saved_words for report in reports)
+    # Calculate aggregates following the new specification
+    from ..services.word_count_service import count_words, calculate_edit_delta
+    
+    total_input_words = 0
+    total_words = 0
+    total_generated_words = 0
+    total_saved_words = 0
+    total_edit_delta = 0
+    total_saved_words_initial = 0
+    
+    for report in reports:
+        # Ensure input_words is calculated if not stored
+        input_words = getattr(report, 'input_words', 0) or count_words(report.input_text)
+        
+        total_input_words += input_words
+        total_words += report.total_words
+        total_generated_words += report.generated_words
+        total_saved_words += report.saved_words
+        
+        # Calculate edit delta for this report
+        edit_delta = calculate_edit_delta(report.generated_words, report.total_words)
+        total_edit_delta += edit_delta
+        
+        # Calculate initial saved words (AI - Input)
+        saved_initial = max(0, report.generated_words - input_words)
+        total_saved_words_initial += saved_initial
     
     # Calculate averages
     report_count = len(reports)
     average_words_per_report = round(total_words / report_count) if report_count > 0 else 0
     average_saved_per_report = round(total_saved_words / report_count) if report_count > 0 else 0
+    average_input_per_report = round(total_input_words / report_count) if report_count > 0 else 0
+    average_edit_delta = round(total_edit_delta / report_count) if report_count > 0 else 0
     
     return {
         "total_reports": report_count,
+        "total_input_words": total_input_words,
         "total_words": total_words,
         "total_generated_words": total_generated_words,
         "total_saved_words": total_saved_words,
+        "total_saved_words_initial": total_saved_words_initial,  # AI - Input across all reports
+        "total_edit_delta": total_edit_delta,  # Net words added/removed by users
         "average_words_per_report": average_words_per_report,
-        "average_saved_per_report": average_saved_per_report
+        "average_saved_per_report": average_saved_per_report,
+        "average_input_per_report": average_input_per_report,
+        "average_edit_delta": average_edit_delta
     }

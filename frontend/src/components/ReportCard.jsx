@@ -295,7 +295,12 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
 
       {/* Word Count Metrics */}
       <div className="mb-6">
-        <WordCountMetrics report={report} showLabels={true} compact={false} />
+        <WordCountMetrics
+          report={report}
+          showLabels={true}
+          compact={false}
+          showDescriptions={isDetailView}
+        />
       </div>
 
       {/* Input Text Section */}

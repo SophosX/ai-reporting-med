@@ -15,8 +15,9 @@ class Report(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     
     # Word count metrics
-    total_words = Column(Integer, default=0)
-    generated_words = Column(Integer, default=0)
-    saved_words = Column(Integer, default=0)
+    input_words = Column(Integer, default=0)  # Words in the radiologist's initial input
+    total_words = Column(Integer, default=0)  # Final report word count
+    generated_words = Column(Integer, default=0)  # AI-generated word count
+    saved_words = Column(Integer, default=0)  # Words saved (final - input)
     
     user = relationship("User", back_populates="reports")

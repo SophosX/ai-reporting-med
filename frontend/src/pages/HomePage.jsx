@@ -11,6 +11,7 @@ import { authenticatedFetch } from "../utils/auth";
 import { toast } from "react-toastify";
 import API_URL from "../utils/apiConfig";
 import ReportsChart from "../components/ReportsChart";
+import OverallWordCountStats from "../components/OverallWordCountStats";
 
 function HomePage() {
   const [recentReports, setRecentReports] = useState([]);
@@ -123,6 +124,11 @@ function HomePage() {
             <FaArrowRight className="text-gray-400" />
           </a>
         </div>
+      </div>
+
+      {/* Word Count Efficiency Dashboard */}
+      <div className="mb-8">
+        <OverallWordCountStats useApi={true} showTimeframe={true} />
       </div>
 
       {/* Reports Analytics Chart */}

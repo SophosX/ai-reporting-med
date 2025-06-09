@@ -20,6 +20,7 @@ class ReportOut(BaseModel):
     template_text: Optional[str] = None
     
     # Word count metrics
+    input_words: int = 0
     total_words: int = 0
     generated_words: int = 0
     saved_words: int = 0

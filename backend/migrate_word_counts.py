@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.core.config import settings
 from app.models.report_model import Report
-from app.services.word_count_service import update_report_word_metrics
+from app.services.word_count_service import count_words, calculate_word_metrics
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +39,7 @@ def migrate_word_counts():
         
         # Add columns if they don't exist
         columns_to_add = [
+            ('input_words', 'INTEGER DEFAULT 0'),
             ('total_words', 'INTEGER DEFAULT 0'),
             ('generated_words', 'INTEGER DEFAULT 0'),
             ('saved_words', 'INTEGER DEFAULT 0')
@@ -58,34 +59,43 @@ def migrate_word_counts():
         
         # Now populate existing reports with word counts
         logger.info("Populating word count metrics for existing reports...")
-        logger.info("Note: For existing reports, we calculate initial metrics.")
-        logger.info("- total_words = current report length")
-        logger.info("- generated_words = current report length (assuming fully AI-generated)")
-        logger.info("- saved_words = 0 (no manual edits recorded)")
+        logger.info("New calculation method:")
+        logger.info("- input_words = user's initial input phrase")
+        logger.info("- generated_words = AI-generated report (assumed to be current report for existing data)")
+        logger.info("- total_words = final report text after any edits")
+        logger.info("- saved_words = total_words - input_words (words user didn't have to type)")
         
         # Create a new session for data operations
         session = SessionLocal()
         try:
-            # Get all reports that don't have word counts calculated (where total_words is 0 or None)
+            # Get all reports that need word count updates
             reports_to_update = session.query(Report).filter(
-                (Report.total_words == 0) | (Report.total_words.is_(None))
+                (Report.total_words == 0) | (Report.total_words.is_(None)) |
+                (Report.input_words == 0) | (Report.input_words.is_(None))
             ).all()
             
             logger.info(f"Found {len(reports_to_update)} reports to update")
             
             for i, report in enumerate(reports_to_update, 1):
                 try:
-                    # For existing reports, assume they are fully AI-generated with no manual edits
-                    from app.services.word_count_service import count_words
-                    total_words = count_words(report.report_text)
+                    # Calculate word metrics using the new method
+                    # For existing reports, assume current report_text is the AI-generated content
+                    input_words, ai_generated_words, final_report_words, saved_words = calculate_word_metrics(
+                        report.input_text,
+                        report.report_text,  # Assume this is the AI-generated text for existing reports
+                        report.report_text   # Final text is the same for existing reports (no edits recorded)
+                    )
                     
-                    report.total_words = total_words
-                    report.generated_words = total_words  # Assume fully AI-generated
-                    report.saved_words = 0  # No manual edits recorded
+                    # Update all word metrics
+                    report.input_words = input_words
+                    report.total_words = final_report_words
+                    report.generated_words = ai_generated_words
+                    report.saved_words = saved_words
                     
                     logger.info(f"Updated report {report.id}: "
-                              f"total={report.total_words}, "
+                              f"input={report.input_words}, "
                               f"generated={report.generated_words}, "
+                              f"total={report.total_words}, "
                               f"saved={report.saved_words}")
                     
                     # Commit every 10 reports to avoid large transactions
@@ -101,6 +111,23 @@ def migrate_word_counts():
             session.commit()
             logger.info("All reports updated successfully!")
             
+            # Display some example calculations for verification
+            logger.info("\nExample calculations for verification:")
+            sample_reports = session.query(Report).limit(3).all()
+            for report in sample_reports:
+                efficiency = round((report.saved_words / max(1, report.input_words)) * 100)
+                edit_delta = report.total_words - report.generated_words
+                saved_initial = max(0, report.generated_words - report.input_words)
+                
+                logger.info(f"Report {report.id}:")
+                logger.info(f"  Input: '{report.input_text[:50]}...' ({report.input_words} words)")
+                logger.info(f"  AI Generated: {report.generated_words} words")
+                logger.info(f"  Final Report: {report.total_words} words")
+                logger.info(f"  Saved Words: {report.saved_words} ({efficiency}% efficiency)")
+                logger.info(f"  Edit Delta: {edit_delta} words")
+                logger.info(f"  Initial Savings: {saved_initial} words (AI - Input)")
+                logger.info("")
+            
         except Exception as e:
             logger.error(f"Error during migration: {e}")
             session.rollback()
@@ -115,9 +142,31 @@ def migrate_word_counts():
         updated_column_names = [column.name for column in reports.columns]
         logger.info(f"Updated columns in reports table: {updated_column_names}")
         
-        # Check if data was populated
-        result = connection.execute(text("SELECT COUNT(*) as total, SUM(total_words) as total_words FROM reports")).fetchone()
-        logger.info(f"Migration verification: {result.total} reports, {result.total_words} total words across all reports")
+        # Check aggregated statistics
+        result = connection.execute(text("""
+            SELECT 
+                COUNT(*) as total_reports,
+                SUM(input_words) as total_input_words,
+                SUM(generated_words) as total_generated_words,
+                SUM(total_words) as total_final_words,
+                SUM(saved_words) as total_saved_words,
+                ROUND(AVG(input_words)) as avg_input_words,
+                ROUND(AVG(saved_words)) as avg_saved_words
+            FROM reports
+        """)).fetchone()
+        
+        logger.info(f"Migration verification:")
+        logger.info(f"  Total Reports: {result.total_reports}")
+        logger.info(f"  Total Input Words: {result.total_input_words}")
+        logger.info(f"  Total AI Generated Words: {result.total_generated_words}")
+        logger.info(f"  Total Final Words: {result.total_final_words}")
+        logger.info(f"  Total Saved Words: {result.total_saved_words}")
+        logger.info(f"  Average Input Words: {result.avg_input_words}")
+        logger.info(f"  Average Saved Words: {result.avg_saved_words}")
+        
+        if result.total_input_words > 0:
+            efficiency_rate = round((result.total_saved_words / result.total_input_words) * 100, 1)
+            logger.info(f"  Overall Efficiency Rate: {efficiency_rate}%")
         
     logger.info("Word count migration completed successfully!")
 

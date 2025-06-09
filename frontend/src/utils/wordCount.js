@@ -22,54 +22,64 @@ export const countWords = (text) => {
 };
 
 /**
- * Calculate word count metrics for a report
- * @param {Object} report - Report object with input_text, report_text, template_text, and stored metrics
- * @returns {Object} - Object containing totalWords, generatedWords, and savedWords
+ * Calculate comprehensive word count metrics for a report following the new specification
+ * @param {Object} report - Report object with all word count fields
+ * @returns {Object} - Object containing all word count metrics
  */
 export const calculateWordMetrics = (report) => {
   if (!report) {
-    return { totalWords: 0, generatedWords: 0, savedWords: 0, inputWords: 0 };
-  }
-
-  // Check if we have stored metrics from the database
-  if (
-    typeof report.total_words === "number" &&
-    typeof report.generated_words === "number" &&
-    typeof report.saved_words === "number" &&
-    report.total_words > 0 // Ensure they're not just default zeros
-  ) {
     return {
-      totalWords: report.total_words,
-      generatedWords: report.generated_words,
-      savedWords: report.saved_words,
-      inputWords: countWords(report.input_text), // Still calculate for display
+      inputWords: 0,
+      aiGeneratedWords: 0,
+      finalWords: 0,
+      savedWords: 0,
+      savedWordsInitial: 0,
+      editDelta: 0,
+      efficiency: 0,
     };
   }
 
-  // Fallback to calculating if stored values are not available
-  const inputWords = countWords(report.input_text);
-  const totalWords = countWords(report.report_text);
-  const templateWords = countWords(report.template_text);
+  // Use stored database values if available, otherwise calculate
+  const inputWords = report.input_words ?? countWords(report.input_text);
+  const aiGeneratedWords = report.generated_words ?? 0;
+  const finalWords = report.total_words ?? countWords(report.report_text);
+  const savedWords = report.saved_words ?? Math.max(0, finalWords - inputWords);
 
-  // Generated words calculation:
-  // If there's a template, generated words = total words - input words
-  // If no template, generated words = total words - input words (AI expanded the input)
-  const generatedWords = Math.max(0, totalWords - inputWords);
-
-  // Saved words calculation:
-  // This represents the words that the radiologist didn't have to write manually
-  // In most cases, this equals the generated words
-  // If a template was used, it could be considered as the template words + AI additions
-  const savedWords =
-    templateWords > 0
-      ? Math.max(generatedWords, templateWords) // Use the larger value when template is involved
-      : generatedWords; // Without template, saved words = generated words
+  // Calculate additional metrics
+  const savedWordsInitial = Math.max(0, aiGeneratedWords - inputWords); // AI - Input
+  const editDelta = finalWords - aiGeneratedWords; // Final - AI (positive = added, negative = removed)
+  // Don't calculate efficiency percentage as it can be misleading with short inputs
+  const efficiency = 0;
 
   return {
-    totalWords,
-    generatedWords,
-    savedWords,
     inputWords,
+    aiGeneratedWords,
+    finalWords,
+    savedWords,
+    savedWordsInitial,
+    editDelta,
+    efficiency,
+  };
+};
+
+/**
+ * Get user-friendly descriptions for the word count metrics
+ * @param {Object} metrics - Metrics object from calculateWordMetrics
+ * @returns {Object} - Object with user-friendly descriptions
+ */
+export const getWordCountDescriptions = (metrics) => {
+  const editDescription =
+    metrics.editDelta === 0
+      ? "No edits made"
+      : metrics.editDelta > 0
+      ? `Added ${metrics.editDelta} words`
+      : `Removed ${Math.abs(metrics.editDelta)} words`;
+
+  return {
+    savedWordsText: `You saved ${metrics.savedWords} words in this report`,
+    editDeltaText: `You ${editDescription.toLowerCase()} from the AI output`,
+    efficiencyText: `${metrics.efficiency}% efficiency vs manual typing`,
+    initialSavingsText: `AI initially saved you ${metrics.savedWordsInitial} words`,
   };
 };
 
@@ -86,12 +96,78 @@ export const formatWordCount = (count) => {
 };
 
 /**
- * Calculate efficiency percentage (saved words / total words * 100)
+ * Calculate efficiency percentage (saved words / input words * 100)
  * @param {number} savedWords - Number of saved words
- * @param {number} totalWords - Total words in report
+ * @param {number} inputWords - Input words from radiologist
  * @returns {number} - Efficiency percentage (0-100)
  */
-export const calculateEfficiency = (savedWords, totalWords) => {
-  if (totalWords === 0) return 0;
-  return Math.round((savedWords / totalWords) * 100);
+export const calculateEfficiency = (savedWords, inputWords) => {
+  if (inputWords === 0) return 0;
+  return Math.round((savedWords / inputWords) * 100);
+};
+
+/**
+ * Get efficiency color based on percentage
+ * @param {number} efficiency - Efficiency percentage
+ * @returns {string} - CSS color class
+ */
+export const getEfficiencyColor = (efficiency) => {
+  if (efficiency >= 80) return "text-green-400";
+  if (efficiency >= 60) return "text-yellow-400";
+  if (efficiency >= 40) return "text-orange-400";
+  return "text-red-400";
+};
+
+/**
+ * Calculate aggregate statistics from multiple reports
+ * @param {Array} reports - Array of report objects
+ * @returns {Object} - Aggregate statistics
+ */
+export const calculateAggregateStats = (reports) => {
+  if (!reports || reports.length === 0) {
+    return {
+      totalReports: 0,
+      totalInputWords: 0,
+      totalAiGeneratedWords: 0,
+      totalFinalWords: 0,
+      totalSavedWords: 0,
+      totalSavedWordsInitial: 0,
+      totalEditDelta: 0,
+      averageInputWords: 0,
+      averageSavedWords: 0,
+      overallEfficiency: 0,
+    };
+  }
+
+  const totals = reports.reduce(
+    (acc, report) => {
+      const metrics = calculateWordMetrics(report);
+      acc.totalInputWords += metrics.inputWords;
+      acc.totalAiGeneratedWords += metrics.aiGeneratedWords;
+      acc.totalFinalWords += metrics.finalWords;
+      acc.totalSavedWords += metrics.savedWords;
+      acc.totalSavedWordsInitial += metrics.savedWordsInitial;
+      acc.totalEditDelta += metrics.editDelta;
+      return acc;
+    },
+    {
+      totalInputWords: 0,
+      totalAiGeneratedWords: 0,
+      totalFinalWords: 0,
+      totalSavedWords: 0,
+      totalSavedWordsInitial: 0,
+      totalEditDelta: 0,
+    }
+  );
+
+  const reportCount = reports.length;
+  const averageInputWords = Math.round(totals.totalInputWords / reportCount);
+  const averageSavedWords = Math.round(totals.totalSavedWords / reportCount);
+
+  return {
+    totalReports: reportCount,
+    ...totals,
+    averageInputWords,
+    averageSavedWords,
+  };
 };
