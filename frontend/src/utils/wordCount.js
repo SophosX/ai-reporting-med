@@ -70,16 +70,16 @@ export const calculateWordMetrics = (report) => {
 export const getWordCountDescriptions = (metrics) => {
   const editDescription =
     metrics.editDelta === 0
-      ? "No edits made"
+      ? "Keine Bearbeitungen vorgenommen"
       : metrics.editDelta > 0
-      ? `Added ${metrics.editDelta} words`
-      : `Removed ${Math.abs(metrics.editDelta)} words`;
+      ? `${metrics.editDelta} Wörter hinzugefügt`
+      : `${Math.abs(metrics.editDelta)} Wörter entfernt`;
 
   return {
-    savedWordsText: `You saved ${metrics.savedWords} words in this report`,
-    editDeltaText: `You ${editDescription.toLowerCase()} from the AI output`,
-    efficiencyText: `${metrics.efficiency}% efficiency vs manual typing`,
-    initialSavingsText: `AI initially saved you ${metrics.savedWordsInitial} words`,
+    savedWordsText: `Sie haben ${metrics.savedWords} Wörter in diesem Bericht gespart`,
+    editDeltaText: `Sie haben ${editDescription.toLowerCase()} von der KI-Ausgabe`,
+    efficiencyText: `${metrics.efficiency}% Effizienz vs. manuelles Tippen`,
+    initialSavingsText: `KI hat Ihnen anfangs ${metrics.savedWordsInitial} Wörter gespart`,
   };
 };
 
