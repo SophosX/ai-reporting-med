@@ -163,22 +163,37 @@ async def update_report(
     if not report:
         raise HTTPException(status_code=404, detail="Report not found or not authorized")
 
+    # Store the old report text to calculate what was added
+    old_report_text = report.report_text
+    
     # Update the report text
     report.report_text = report_data.report_text
     
-    # Update word count metrics following the new specification
-    from ..services.word_count_service import calculate_word_metrics, count_words
+    # Update word count metrics with the new logic:
+    # Any words added by the user during editing should be counted as "input" words
+    from ..services.word_count_service import count_words
     
-    # Calculate new metrics based on the edited text
-    input_words = getattr(report, 'input_words', 0) or count_words(report.input_text)
+    # Calculate word counts
+    old_final_words = count_words(old_report_text)
+    new_final_words = count_words(report.report_text)
     ai_generated_words = report.generated_words  # Keep original AI contribution unchanged
-    final_report_words = count_words(report.report_text)
     
-    # Saved words = final report words - input words (words user didn't have to write)
-    saved_words = max(0, final_report_words - input_words)
+    # Calculate words added by user during editing
+    words_added_by_user = max(0, new_final_words - old_final_words)
+    
+    # Update input words to include any words the user manually added
+    original_input_words = getattr(report, 'input_words', 0) or count_words(report.input_text)
+    updated_input_words = original_input_words + words_added_by_user
+    
+    # The final report word count should remain the same as AI generated + any user additions
+    # But we treat user additions as "input" for efficiency calculation purposes
+    final_report_words = new_final_words
+    
+    # Saved words = final report words - updated input words (including user additions)
+    saved_words = max(0, final_report_words - updated_input_words)
     
     # Update the report metrics
-    report.input_words = input_words
+    report.input_words = updated_input_words
     report.total_words = final_report_words
     report.saved_words = saved_words
     # report.generated_words stays the same (original AI contribution)

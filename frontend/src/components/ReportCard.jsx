@@ -28,9 +28,13 @@ import WordCountMetrics from "./WordCountMetrics";
  * @param {function} onUpdate - Function to call when report is updated
  */
 function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingReport, setIsEditingReport] = useState(false);
+  const [isEditingInput, setIsEditingInput] = useState(false);
   const [editedReportText, setEditedReportText] = useState(
     report?.report_text || ""
+  );
+  const [editedInputText, setEditedInputText] = useState(
+    report?.input_text || ""
   );
   const [templateText, setTemplateText] = useState("");
   const navigate = useNavigate();
@@ -60,6 +64,12 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
     fetchTemplate();
   }, [report?.template_id]);
 
+  // Update local state when report prop changes
+  useEffect(() => {
+    setEditedReportText(report?.report_text || "");
+    setEditedInputText(report?.input_text || "");
+  }, [report?.report_text, report?.input_text]);
+
   const formatDate = (isoString) => {
     if (!isoString) return { date: "Invalid Date", time: "" };
 
@@ -74,7 +84,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
-    toast.success("Bericht in die Zwischenablage kopiert");
+    toast.success("Text in die Zwischenablage kopiert");
   };
 
   const handleDownloadPdf = async () => {
@@ -158,12 +168,17 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
     }
   };
 
-  const handleStartEditing = () => {
+  const handleStartEditingReport = () => {
     setEditedReportText(report.report_text);
-    setIsEditing(true);
+    setIsEditingReport(true);
   };
 
-  const handleSaveEdit = async () => {
+  const handleStartEditingInput = () => {
+    setEditedInputText(report.input_text);
+    setIsEditingInput(true);
+  };
+
+  const handleSaveReportEdit = async () => {
     try {
       const response = await authenticatedFetch(
         `${API_URL}/reports/${report.id}`,
@@ -183,23 +198,62 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
       // Get the updated report data from the backend response
       const updatedReportData = await response.json();
 
-      setIsEditing(false);
+      setIsEditingReport(false);
 
       if (onUpdate) {
         // Use the complete updated report data from backend (includes recalculated word metrics)
         onUpdate(updatedReportData);
       }
 
-      toast.success("Report updated successfully");
+      toast.success("Bericht erfolgreich aktualisiert");
     } catch (err) {
-      console.error("Error saving edit:", err);
-      toast.error("Error saving changes");
+      console.error("Error saving report edit:", err);
+      toast.error("Fehler beim Speichern der Berichtsänderungen");
     }
   };
 
-  const handleCancelEdit = () => {
-    setIsEditing(false);
+  const handleSaveInputEdit = async () => {
+    try {
+      const response = await authenticatedFetch(
+        `${API_URL}/reports/${report.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ input_text: editedInputText }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update input text");
+      }
+
+      // Get the updated report data from the backend response
+      const updatedReportData = await response.json();
+
+      setIsEditingInput(false);
+
+      if (onUpdate) {
+        // Use the complete updated report data from backend (includes recalculated word metrics)
+        onUpdate(updatedReportData);
+      }
+
+      toast.success("Eingabetext erfolgreich aktualisiert");
+    } catch (err) {
+      console.error("Error saving input edit:", err);
+      toast.error("Fehler beim Speichern der Eingabetext-Änderungen");
+    }
+  };
+
+  const handleCancelReportEdit = () => {
+    setIsEditingReport(false);
     setEditedReportText(report.report_text);
+  };
+
+  const handleCancelInputEdit = () => {
+    setIsEditingInput(false);
+    setEditedInputText(report.input_text);
   };
 
   const renderDiff = (text1, text2) => {
@@ -322,10 +376,10 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
             Generierter Bericht
           </h3>
           <div className="flex space-x-2">
-            {isEditing ? (
+            {isEditingReport ? (
               <>
                 <button
-                  onClick={handleSaveEdit}
+                  onClick={handleSaveReportEdit}
                   title="Änderungen speichern"
                   className="p-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg transition-colors duration-200 flex items-center space-x-2 text-green-400 hover:text-green-300 text-sm"
                 >
@@ -333,7 +387,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
                   <span>Fertig</span>
                 </button>
                 <button
-                  onClick={handleCancelEdit}
+                  onClick={handleCancelReportEdit}
                   title="Bearbeitung abbrechen"
                   className="p-2 hover:bg-red-500/10 rounded-lg transition-colors duration-200 flex items-center space-x-2 text-gray-400 hover:text-red-400 text-sm"
                 >
@@ -344,7 +398,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
             ) : (
               <>
                 <button
-                  onClick={handleStartEditing}
+                  onClick={handleStartEditingReport}
                   title="Bericht bearbeiten"
                   className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 flex items-center space-x-2 text-gray-400 hover:text-blue-400 text-sm"
                 >
@@ -366,7 +420,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
 
         {/* Report content with Markdown editor */}
         <div className="mt-4">
-          {isEditing ? (
+          {isEditingReport ? (
             <div data-color-mode="dark" className="md-editor-wrapper">
               <MDEditor
                 value={editedReportText}
