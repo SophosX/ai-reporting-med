@@ -39,7 +39,8 @@ function NewReportPage() {
     "- Jeder Aspekt des folgenden Templates muss vollständig berücksichtigt werden – auch wenn hierzu keine Angaben im Input enthalten sind. In diesem Fall ist die entsprechende unauffällige Normalformulierung (wie im Template) einzufügen.\n" +
     "- Die Reihenfolge der Abschnitte im Template darf unter keinen Umständen verändert werden.\n" +
     "- Der Befundtext muss als einzeiliger Fließtext ausgegeben werden – keine Segmentierung, keine Zwischenüberschriften, keine Absätze.\n" +
-    "- Verwende den typischen, stichpunktartigen Stil radiologischer Befunde: kurz, sachlich, telegraphisch, ohne erklärende oder narrative Sprache.";
+    "- Verwende den typischen, stichpunktartigen Stil radiologischer Befunde: kurz, sachlich, telegraphisch, ohne erklärende oder narrative Sprache.\n" +
+    '- Prüfe auf inkonsistenzen und wenn du welche findest schreibe das unter den Befund mit "Achtung, folgende Inkonsistenz korrigiert: ohne Template"';
 
   // Load template when component mounts or when selectedTemplateId changes
   useEffect(() => {
@@ -379,15 +380,15 @@ function NewReportPage() {
               <p className="text-xs text-gray-500 mt-1">
                 Definiert das Verhalten der KI bei der Berichterstellung
               </p>
-              <p className="text-xs text-gray-400 mt-2 font-medium">
-                Prüfe auf inkonsistenzen und wenn du welche findest schreibe das
-                unter den Befund mit "Achtung, folgende Inkonsistenz korrigiert:{" "}
-                {selectedTemplateId
-                  ? templates.find((t) => t.id === selectedTemplateId)?.title ||
-                    "unbekanntes Template"
-                  : "ohne Template"}
-                "
-              </p>
+              {selectedTemplateId && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Sie verwenden die Vorlage:{" "}
+                  <span className="font-medium text-blue-400">
+                    {templates.find((t) => t.id === selectedTemplateId)
+                      ?.title || "Unbekannte Vorlage"}
+                  </span>
+                </p>
+              )}
             </div>
           )}
 
