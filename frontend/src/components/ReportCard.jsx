@@ -337,10 +337,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
       )}
 
       {/* Date Info */}
-      <div className="flex items-center space-x-3 mt-8 mb-6">
-        <div className="p-3 bg-blue-500/10 rounded-lg">
-          <FaFileMedical className="text-blue-400 text-2xl" />
-        </div>
+      <div className="mt-8 mb-6">
         <div>
           <span className="text-sm font-medium text-gray-300">{date}</span>
           <div className="text-xs text-gray-500">{time}</div>

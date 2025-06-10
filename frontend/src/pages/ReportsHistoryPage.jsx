@@ -215,10 +215,7 @@ function ReportsHistoryPage() {
                         <FaChevronDown className="text-gray-400 text-sm" />
                       </div>
 
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="p-2 bg-blue-500/10 rounded-lg">
-                          <FaFileMedical className="text-blue-400 text-sm" />
-                        </div>
+                      <div className="mb-3">
                         <div>
                           <span className="text-sm font-medium text-gray-300">
                             {date}
