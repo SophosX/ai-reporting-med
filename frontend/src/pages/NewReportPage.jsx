@@ -480,48 +480,6 @@ function NewReportPage() {
         <form onSubmit={handleSaveReport} className="space-y-6">
           <div>
             <label
-              htmlFor="template"
-              className="block mb-2 text-sm text-gray-300"
-            >
-              Vorlage wählen:
-            </label>
-            {templatesLoading ? (
-              <div className="flex items-center space-x-2 text-gray-400">
-                <FaCircleNotch className="animate-spin" />
-                <span>Lade Templates...</span>
-              </div>
-            ) : (
-              <Select
-                value={
-                  selectedTemplateId
-                    ? templates.find((t) => t.id === selectedTemplateId)
-                      ? {
-                          value: selectedTemplateId,
-                          label: templates.find(
-                            (t) => t.id === selectedTemplateId
-                          )?.title,
-                        }
-                      : null
-                    : null
-                }
-                onChange={(selectedOption) => {
-                  setSelectedTemplateId(
-                    selectedOption ? selectedOption.value : ""
-                  );
-                }}
-                options={getGroupedOptions()}
-                isSearchable
-                isClearable
-                isDisabled={templatesLoading}
-                placeholder="-- ohne Vorlage --"
-                styles={customSelectStyles}
-                noOptionsMessage={() => "Keine Templates gefunden"}
-              />
-            )}
-          </div>
-
-          <div>
-            <label
               htmlFor="inputText"
               className="block mb-2 text-sm text-gray-300"
             >
@@ -795,11 +753,56 @@ function NewReportPage() {
             </div>
           )}
 
-          <div className="flex justify-end mt-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mt-8">
+            {/* Template Selection */}
+            <div className="flex-1 max-w-md">
+              <label
+                htmlFor="template"
+                className="block mb-2 text-sm text-gray-300"
+              >
+                Vorlage wählen:
+              </label>
+              {templatesLoading ? (
+                <div className="flex items-center space-x-2 text-gray-400 h-[42px]">
+                  <FaCircleNotch className="animate-spin" />
+                  <span>Lade Templates...</span>
+                </div>
+              ) : (
+                <Select
+                  value={
+                    selectedTemplateId
+                      ? templates.find((t) => t.id === selectedTemplateId)
+                        ? {
+                            value: selectedTemplateId,
+                            label: templates.find(
+                              (t) => t.id === selectedTemplateId
+                            )?.title,
+                          }
+                        : null
+                      : null
+                  }
+                  onChange={(selectedOption) => {
+                    setSelectedTemplateId(
+                      selectedOption ? selectedOption.value : ""
+                    );
+                  }}
+                  options={getGroupedOptions()}
+                  isSearchable
+                  isClearable
+                  isDisabled={templatesLoading}
+                  placeholder="-- ohne Vorlage --"
+                  styles={customSelectStyles}
+                  noOptionsMessage={() => "Keine Templates gefunden"}
+                  menuPlacement="top"
+                />
+              )}
+            </div>
+
+            {/* Generate Button */}
             <button
               type="submit"
               disabled={isGenerating || !inputText.trim()}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white py-2 px-6 rounded-lg transition-colors duration-200"
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white py-2.5 px-6 rounded-lg transition-colors duration-200 whitespace-nowrap h-[42px]"
             >
               {isGenerating ? (
                 <>
