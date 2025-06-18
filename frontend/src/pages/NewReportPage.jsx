@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FaFileMedical,
   FaCircleNotch,
   FaCopy,
   FaMagic,
@@ -473,7 +472,6 @@ function NewReportPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
       <div className="glass-effect rounded-xl shadow-lg p-8 hover-lift">
         <div className="flex items-center space-x-3 mb-6">
-          <FaFileMedical className="text-2xl text-blue-400" />
           <h1 className="text-2xl font-bold text-blue-400">
             Medizinischen Bericht erstellen
           </h1>

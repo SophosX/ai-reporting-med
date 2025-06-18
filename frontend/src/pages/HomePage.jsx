@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   FaClock,
   FaArrowRight,
-  FaFileMedical,
   FaPlus,
   FaHistory,
   FaClipboardList,
@@ -165,7 +164,6 @@ function HomePage() {
             </div>
           ) : recentReports.length === 0 ? (
             <div className="text-center py-12">
-              <FaFileMedical className="text-5xl text-gray-600 mb-4 mx-auto" />
               <p className="text-gray-400 mb-6">
                 Noch keine Berichte vorhanden. Erstellen Sie Ihren ersten
                 Bericht!

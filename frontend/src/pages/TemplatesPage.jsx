@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  FaBookMedical,
   FaArrowRight,
   FaPlus,
   FaEdit,
@@ -342,7 +341,6 @@ function TemplatesPage() {
     <div className="max-w-5xl mx-auto px-4 py-8 text-white">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <FaBookMedical className="text-2xl text-purple-400" />
           <h2 className="text-3xl font-bold text-purple-400">
             Radiologie Vorlagen
           </h2>

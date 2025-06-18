@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   FaSync,
-  FaFileMedical,
   FaChevronDown,
   FaChevronUp,
   FaExpandArrowsAlt,
@@ -123,9 +122,6 @@ function ReportsHistoryPage() {
         {/* Total Reports Display */}
         <div className="bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-700">
           <div className="flex items-center">
-            <div className="p-2 rounded-full bg-blue-500 bg-opacity-25 w-10 h-10 flex items-center justify-center">
-              <FaFileMedical className="text-lg text-blue-400" />
-            </div>
             <div className="ml-3">
               <p className="text-xs text-gray-400">Gesamtberichte</p>
               {error ? (

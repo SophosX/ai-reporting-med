@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   FaFilePdf,
   FaTrashAlt,
-  FaFileMedical,
   FaKeyboard,
   FaCopy,
   FaEdit,
@@ -369,7 +368,6 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
       <div className="bg-gray-800/50 rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-green-400 flex items-center">
-            <FaFileMedical className="mr-2" />
             Generierter Bericht
           </h3>
           <div className="flex space-x-2">

@@ -42,7 +42,6 @@ function Navbar() {
             to="/"
             className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-200"
           >
-            <FaNotesMedical className="text-white text-2xl" />
             <span className="text-white font-bold text-xl">
               Medizinische Berichte
             </span>
