@@ -13,9 +13,18 @@ class Settings(BaseSettings):
     # Database settings
     SQLALCHEMY_DATABASE_URI: str
     
-    # OpenAI settings
+    # AI Service Configuration
+    AI_PROVIDER: str = "openai"  # "openai" or "azure"
+    
+    # OpenAI settings (for testing)
     OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4"
+    OPENAI_MODEL: str = "gpt-4o"
+    
+    # Azure OpenAI settings (for production)
+    AZURE_OPENAI_API_KEY: str = ""
+    AZURE_OPENAI_ENDPOINT: str = ""
+    AZURE_OPENAI_MODEL: str = "gpt-4o"
+    AZURE_API_VERSION: str = "2025-01-01-preview"
     
     # CORS settings
     CORS_ORIGINS: str = ""

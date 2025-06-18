@@ -12,69 +12,27 @@ radiologyTemplates = [
     {
         "id": "roentgen-thorax",
         "title": "Röntgen Thorax",
-        "text": """
-UNTERSUCHUNG: CT Thorax nativ und nach KM-Gabe
-Keine pneumonischen Infiltrate. Keine Pleuraergüsse. Kein Pneumothorax.
-Normalgroße Herzsilhouette ohne Zeichen der pulmonalvenösen Stauung.
-Mittelständiges schlankes Mediastinum mit regelrechter Hiluskonfiguration.
-Mitabgebildeter Weichteilmantel unauffällig. Unauffällige Darstellung des miterfassten Achsenskeletts.
-"""
+        "text": """Keine pneumonischen Infiltrate. Keine Pleuraergüsse. Kein Pneumothorax. Normalgroße Herzsilhouette. Keine Zeichen der pulmonalvenösen Stauung. Mittelständiges schlankes Mediastinum mit regelrechter Hiluskonfiguration. Mitabgebildeter Weichteilmantel unauffällig. Unauffällige Darstellung des miterfassten Achsenskeletts."""
     },
     {
         "id": "ct-thorax",
         "title": "CT Thorax",
-        "text": """
-Beidseits regelrecht belüftete Lungenflügel, keine relevanten Belüftungsstörungen. Keine pneumonischen Infiltrate. Kein Pleuraerguss. Kein Pneumothorax.
-Keine malignomsuspekten intrapulmonalen Rundherde.
-Normgroßes Herz. Kein Perikarderguss.
-Regelrechte Darstellung der großen intrathorakalen Gefäße.
-Keine thorakale Lymphadenopathie.
-Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darstellung des miterfassten Achsenskeletts sowie der miterfassten Weichteile.
-"""
+        "text": """Beidseits regelrecht belüftete Lungenflügel, keine relevanten Belüftungsstörungen. Keine pneumonischen Infiltrate. Kein Pleuraerguss. Kein Pneumothorax. Keine malignomsuspekten intrapulmonalen Rundherde. Normgroßes Herz. Kein Perikarderguss. Regelrechte Darstellung der großen intrathorakalen Gefäße. Keine thorakale Lymphadenopathie. Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darstellung des miterfassten Achsenskeletts sowie der miterfassten Weichteile."""
     },
     {
         "id": "ct-abdomen",
         "title": "CT Abdomen",
-        "text": """
-Regelrechte Darstellung der Leber ohne Nachweis fokaler Parenchymläsionen. Regelrechte Kontrastierung der venösen und portalvenösen Gefäße. Arterieller Normalversorgungstyp. Keine intra- oder extrahepatische Cholestase. Unauffällige Gallenblase. Regelrechte Darstellung der Milz, des Pancreas sowie der Nebennieren.
-Regelrechte Darstellung der Nieren, kein Harnstau. Harnblase unauffällig.
-Regelrechte Kontrastierung der Darmwände von Dünn- und Dickdarm. Keine Passagestörung.
-Regelrechte Darstellung der Organe im kleinen Becken.
-Keine freie intraabdominale Flüssigkeit. Keine freie Luft. Keine abdominelle Lymphadenopathie.
-Soweit in der aktuellen Phase abgrenzbar regelrechte Kontrastierung der abgebildeten Gefäßabschnitte.
-Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darstellung des miterfassten Achsenskeletts sowie der miterfassten Weichteile.
-"""
+        "text": """Regelrechte Darstellung der Leber ohne Nachweis fokaler Parenchymläsionen. Regelrechte Kontrastierung der venösen und portalvenösen Gefäße. Arterieller Normalversorgungstyp. Keine intra- oder extrahepatische Cholestase. Unauffällige Gallenblase. Regelrechte Darstellung der Milz, des Pancreas sowie der Nebennieren. Regelrechte Darstellung der Nieren, kein Harnstau. Harnblase unauffällig. Regelrechte Kontrastierung der Darmwände von Dünn- und Dickdarm. Keine Passagestörung. Regelrechte Darstellung der Organe im kleinen Becken. Keine freie intraabdominale Flüssigkeit. Keine freie Luft. Keine abdominelle Lymphadenopathie. Soweit in der aktuellen Phase abgrenzbar regelrechte Kontrastierung der abgebildeten Gefäßabschnitte. Unauffällige Darstellung der miterfassten Oberbauchorgane. Unauffällige Darstellung des miterfassten Achsenskeletts sowie der miterfassten Weichteile."""
     },
     {
-        "id": "mrt-adbomen",
-        "title": "MRT Abdomen",
-        "text": """
-Regelrechte Artikulation des Kniegelenks. Kein Gelenkerguss. Regelrechte Kontur und Signalintentsität des Gelenkknorpels sowie der Menisci. Regelrechte Darstellung des vorderen und hinteren Kreuzbandes sowie des medialen und lateralen Kollateralbandes. Ebenfalls unauffällige Darstellung der Patellarsehne und der Retinacula patellae.
-Nach Kontrastmittelapplikation zeigt sich keine auffällige Kontrastmittelanreicherung als Hinweis auf eine entzündliche Veränderung.
-Altersentsprechende Epiphysenfugen. Regelrechte Signalintensität der abgebildeten Knochenmarksräume und der mitabgebildeten Weichteile, insbesondere kein Nachweis einer frischen knöchernen Verletzung.
-"""
+        "id": "mrt-knie",
+        "title": "MRT Knie",
+        "text": """Regelrechte Artikulation des Kniegelenks. Kein Gelenkerguss. Regelrechte Kontur und Signalintentsität des Gelenkknorpels sowie der Menisci. Regelrechte Darstellung des vorderen und hinteren Kreuzbandes sowie des medialen und lateralen Kollateralbandes. Ebenfalls unauffällige Darstellung der Patellarsehne und der Retinacula patellae. Nach Kontrastmittelapplikation zeigt sich keine auffällige Kontrastmittelanreicherung als Hinweis auf eine entzündliche Veränderung. Altersentsprechende Epiphysenfugen. Regelrechte Signalintensität der abgebildeten Knochenmarksräume und der mitabgebildeten Weichteile, insbesondere kein Nachweis einer frischen knöchernen Verletzung."""
     },
     {
         "id": "mrt-schulter",
         "title": "MRT Schulter",
-        "text": """
-Regelrechte Artikulation des normal konfigurierten Oberarmkopfes in
-der regelhaft ausgebildeten Pfanne. Glatte Gelenkflächen bei normal
-breiter Kortikalis. Regelrecht weiter Gelenkspalt. Homogenes, fettäqui-
-valentes Knochenmarksignal.
-Das Labrum glenoidale ist allseits intakt.
-Normale Konfiguration des Akromioklavikulargelenks. Keine Gelenkhy-
-pertrophie. Subakromiales Fettgewebe erhalten.
-Nach Konfiguration und Verlauf reguläre Darstellung der die Rotatoren-
-manschette bildenden Muskulatur. Insbesondere stellt sich der M. su-
-praspinatus nach Lage, Breite und Signalgebung ordnungsgemäß dar
-mit normalem Muskel-Sehnen-Übergang.
-Reguläre Abbildung der intakten Bizepssehne mit normalem Verlauf im
-Canalis bicipitis.
-Unauffällige Darstellung der übrigen das Schultergelenk deckenden
-Muskulatur sowie der mitdargestellten Lungenabschnitte und Weich-
-teile.
-"""
+        "text": """Regelrechte Artikulation des Glenohumeralgelenks. Normal konfigurierter Oberarmkopf. Regelrecht konfigurierte Pfanne. Glatte Gelenkflächen bei normal breiter Kortikalis. Regelrecht weiter Gelenkspalt. Homogenes, fettäquivalentes Knochenmarksignal. Labrum glenoidale allseits intakt. Normale Konfiguration des Akromioklavikulargelenks. Keine Gelenkhypertrophie. Subakromiales Fettgewebe erhalten. Regelrechte Darstellung der Rotatorenmanschette. M. supraspinatus mit normaler Lage, Breite, Signalgebung und normalem Muskel-Sehnen-Übergang. Intakte Bizepssehne mit regelrechtem Verlauf im Canalis bicipitis. Unauffällige Darstellung der das Schultergelenk deckenden Muskulatur. Unauffällige Darstellung der mitabgebildeten Lungenabschnitte. Unauffällige Darstellung der mitabgebildeten Weichteile."""
     }
 ]
 
