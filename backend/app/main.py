@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .core.database import Base, engine
-from .routers import auth, reports, templates, user_templates
+from .routers import auth, reports, templates, user_templates, custom_prompt
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from .core.config import settings
@@ -36,6 +36,12 @@ def run_migrations():
             "migration_add_override_columns.py"
         )
         
+        # Path to the custom prompt migration script
+        custom_prompt_migration_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "migration_add_custom_prompt_column.py"
+        )
+        
         # Run template columns migration first
         if os.path.exists(template_migration_path):
             logger.info(f"Running template migration script: {template_migration_path}")
@@ -62,7 +68,20 @@ def run_migrations():
             migration.run_migration()
             logger.info("Override migration completed")
         
-        if not os.path.exists(template_migration_path) and not os.path.exists(override_migration_path):
+        # Run custom prompt migration third
+        if os.path.exists(custom_prompt_migration_path):
+            logger.info(f"Running custom prompt migration script: {custom_prompt_migration_path}")
+            
+            # Load and run the migration script
+            spec = importlib.util.spec_from_file_location("custom_prompt_migration", custom_prompt_migration_path)
+            migration = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(migration)
+            
+            # Run the migration
+            migration.run_migration()
+            logger.info("Custom prompt migration completed")
+        
+        if not os.path.exists(template_migration_path) and not os.path.exists(override_migration_path) and not os.path.exists(custom_prompt_migration_path):
             logger.info("No migration scripts found")
     except Exception as e:
         logger.error(f"Error running migrations: {e}")
@@ -131,6 +150,7 @@ def create_app():
     app.include_router(reports.router, prefix="/reports", tags=["reports"])
     app.include_router(templates.router, prefix="/templates", tags=["templates"])
     app.include_router(user_templates.router, prefix="/user-templates", tags=["user-templates"])
+    app.include_router(custom_prompt.router, prefix="/custom-prompt", tags=["custom-prompt"])
 
     logger.info("Application startup complete")
     return app
