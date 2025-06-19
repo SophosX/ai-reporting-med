@@ -561,36 +561,47 @@ function TemplatesPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 text-white">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center space-x-3">
-          <h2 className="text-3xl font-bold text-purple-400">
+          <h2 className="text-2xl sm:text-3xl font-bold text-purple-400">
             Radiologie Vorlagen
           </h2>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           {selectionMode ? (
             <button
               onClick={handleExitSelectionMode}
-              className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg"
+              className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 sm:px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg text-sm sm:text-base"
             >
               <FaTimes className="text-sm" />
-              <span>Auswahl beenden</span>
+              <span className="whitespace-nowrap">Auswahl beenden</span>
             </button>
           ) : (
             <button
               onClick={handleEnterSelectionMode}
-              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-blue-500/25"
+              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 sm:px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-blue-500/25 text-sm sm:text-base"
             >
-              <span>Templates Exportieren</span>
+              <span className="whitespace-nowrap">Templates Exportieren</span>
             </button>
           )}
           {!selectionMode && (
-            <button
-              onClick={handleStartCreating}
-              className="bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-            >
-              <span>Neues Template</span>
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  handleStartCreating();
+                  setImportMode(true);
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 sm:px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-blue-500/25 text-sm sm:text-base"
+              >
+                <span className="whitespace-nowrap">Aus JSON importieren</span>
+              </button>
+              <button
+                onClick={handleStartCreating}
+                className="bg-purple-500 hover:bg-purple-600 text-white py-2 px-3 sm:px-4 rounded-lg transition-colors duration-200 flex items-center justify-center text-sm sm:text-base"
+              >
+                <span className="whitespace-nowrap">Neues Template</span>
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -602,28 +613,30 @@ function TemplatesPage() {
 
       {/* Expand/Collapse Controls */}
       {templates.length > 0 && (
-        <div className="flex justify-between items-center mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
+        <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
           <div className="text-sm text-gray-300">
             {selectionMode ? (
-              <div className="flex items-center space-x-4">
-                <span className="font-medium">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <span className="font-medium text-center sm:text-left">
                   {selectedTemplates.size} von {templates.length} ausgewählt
                 </span>
                 {selectedTemplates.size > 0 && (
-                  <div className="flex space-x-2">
+                  <div className="flex justify-center sm:justify-start">
                     <button
                       onClick={handleBulkExportAsJSON}
                       disabled={isExporting}
-                      className="text-sm px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors duration-200 flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors duration-200 flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <FaFileExport className="text-xs" />
-                      <span>Als JSON exportieren</span>
+                      <span className="whitespace-nowrap">
+                        Als JSON exportieren
+                      </span>
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <div>
+              <div className="text-center sm:text-left">
                 <span className="font-medium">{templates.length}</span>{" "}
                 Templates verfügbar
                 {expandedTemplates.size > 0 && (
@@ -634,37 +647,37 @@ function TemplatesPage() {
               </div>
             )}
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             {selectionMode ? (
               <>
                 <button
                   onClick={handleSelectAllTemplates}
-                  className="text-sm px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                  className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-1"
                 >
-                  <span>Alle auswählen</span>
+                  <span className="whitespace-nowrap">Alle auswählen</span>
                 </button>
                 <button
                   onClick={handleClearSelection}
-                  className="text-sm px-3 py-1 bg-gray-600/20 hover:bg-gray-600/30 text-gray-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                  className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-gray-600/20 hover:bg-gray-600/30 text-gray-300 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-1"
                 >
-                  <span>Auswahl löschen</span>
+                  <span className="whitespace-nowrap">Auswahl löschen</span>
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={expandAllTemplates}
-                  className="text-sm px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                  className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-1"
                 >
                   <FaExpandArrowsAlt className="text-xs" />
-                  <span>Alle erweitern</span>
+                  <span className="whitespace-nowrap">Alle erweitern</span>
                 </button>
                 <button
                   onClick={collapseAllTemplates}
-                  className="text-sm px-3 py-1 bg-gray-600/20 hover:bg-gray-600/30 text-gray-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                  className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-gray-600/20 hover:bg-gray-600/30 text-gray-300 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-1"
                 >
                   <FaCompressArrowsAlt className="text-xs" />
-                  <span>Alle zuklappen</span>
+                  <span className="whitespace-nowrap">Alle zuklappen</span>
                 </button>
               </>
             )}
@@ -1190,75 +1203,77 @@ function TemplatesPage() {
                     </div>
                   ) : (
                     <>
-                      <div className="flex justify-between items-start mb-2">
-                        {selectionMode && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleTemplateSelection(tpl.id);
-                            }}
-                            className="mr-3 mt-1 p-1 rounded transition-colors duration-200 hover:bg-gray-700"
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                        <div className="flex items-start w-full">
+                          {selectionMode && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTemplateSelection(tpl.id);
+                              }}
+                              className="mr-3 mt-1 p-1 rounded transition-colors duration-200 hover:bg-gray-700 flex-shrink-0"
+                            >
+                              {isSelectedForExport ? (
+                                <FaCheckSquare className="text-blue-400 text-lg" />
+                              ) : (
+                                <FaSquare className="text-gray-400 text-lg hover:text-gray-300" />
+                              )}
+                            </button>
+                          )}
+                          <div
+                            className="flex-1 cursor-pointer min-w-0"
+                            onClick={() => toggleTemplateExpansion(tpl.id)}
                           >
-                            {isSelectedForExport ? (
-                              <FaCheckSquare className="text-blue-400 text-lg" />
-                            ) : (
-                              <FaSquare className="text-gray-400 text-lg hover:text-gray-300" />
-                            )}
-                          </button>
-                        )}
-                        <div
-                          className="flex-1 cursor-pointer"
-                          onClick={() => toggleTemplateExpansion(tpl.id)}
-                        >
-                          <div className="flex items-center space-x-2">
-                            <h3 className="text-xl font-semibold text-purple-300 hover:text-purple-200 transition-colors">
-                              {tpl.title}
-                            </h3>
-                            {isExpanded ? (
-                              <FaChevronUp className="text-gray-400 text-sm" />
-                            ) : (
-                              <FaChevronDown className="text-gray-400 text-sm" />
+                            <div className="flex items-center space-x-2">
+                              <h3 className="text-lg sm:text-xl font-semibold text-purple-300 hover:text-purple-200 transition-colors truncate">
+                                {tpl.title}
+                              </h3>
+                              {isExpanded ? (
+                                <FaChevronUp className="text-gray-400 text-sm flex-shrink-0" />
+                              ) : (
+                                <FaChevronDown className="text-gray-400 text-sm flex-shrink-0" />
+                              )}
+                            </div>
+                            {!isExpanded && (
+                              <div className="text-xs text-gray-500 mt-1 truncate">
+                                {tpl.text
+                                  .replace(/[#*_`]/g, "")
+                                  .substring(0, 100)}
+                                ...
+                              </div>
                             )}
                           </div>
-                          {!isExpanded && (
-                            <div className="text-xs text-gray-500 mt-1 truncate">
-                              {tpl.text
-                                .replace(/[#*_`]/g, "")
-                                .substring(0, 100)}
-                              ...
-                            </div>
-                          )}
                         </div>
-                        <div className="flex space-x-2 ml-4">
+                        <div className="flex space-x-1 sm:space-x-2 sm:ml-4 justify-end sm:justify-start flex-shrink-0">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleStartEditing(tpl);
                             }}
-                            className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-blue-400"
+                            className="p-1.5 sm:p-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-blue-400"
                             title="Template bearbeiten"
                           >
-                            <FaEdit />
+                            <FaEdit className="text-sm" />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleExportTemplate(tpl);
                             }}
-                            className="p-2 hover:bg-green-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-green-400"
+                            className="p-1.5 sm:p-2 hover:bg-green-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-green-400"
                             title="Template als JSON exportieren"
                           >
-                            <FaDownload />
+                            <FaDownload className="text-sm" />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(tpl.template_db_id);
                             }}
-                            className="p-2 hover:bg-red-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-red-400"
+                            className="p-1.5 sm:p-2 hover:bg-red-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-red-400"
                             title="Template löschen"
                           >
-                            <FaTrashAlt />
+                            <FaTrashAlt className="text-sm" />
                           </button>
                         </div>
                       </div>
@@ -1273,13 +1288,15 @@ function TemplatesPage() {
                               />
                             </div>
                           </div>
-                          <div className="flex justify-end">
+                          <div className="flex justify-center sm:justify-end">
                             <button
                               onClick={() => handleSelect(tpl.id)}
-                              className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                              className="flex items-center justify-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-sm sm:text-base w-full sm:w-auto"
                             >
-                              <span>Mit diesem Template fortfahren</span>
-                              <FaArrowRight />
+                              <span className="whitespace-nowrap">
+                                Mit diesem Template fortfahren
+                              </span>
+                              <FaArrowRight className="text-sm flex-shrink-0" />
                             </button>
                           </div>
                         </>
@@ -1385,68 +1402,72 @@ function TemplatesPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex justify-between items-start mb-2">
-                      {selectionMode && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleTemplateSelection(tpl.id);
-                          }}
-                          className="mr-3 mt-1 p-1 rounded transition-colors duration-200 hover:bg-gray-700"
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                      <div className="flex items-start w-full">
+                        {selectionMode && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTemplateSelection(tpl.id);
+                            }}
+                            className="mr-3 mt-1 p-1 rounded transition-colors duration-200 hover:bg-gray-700 flex-shrink-0"
+                          >
+                            {isSelectedForExport ? (
+                              <FaCheckSquare className="text-blue-400 text-lg" />
+                            ) : (
+                              <FaSquare className="text-gray-400 text-lg hover:text-gray-300" />
+                            )}
+                          </button>
+                        )}
+                        <div
+                          className="flex-1 cursor-pointer min-w-0"
+                          onClick={() => toggleTemplateExpansion(tpl.id)}
                         >
-                          {isSelectedForExport ? (
-                            <FaCheckSquare className="text-blue-400 text-lg" />
-                          ) : (
-                            <FaSquare className="text-gray-400 text-lg hover:text-gray-300" />
+                          <div className="flex items-center space-x-2">
+                            <h3 className="text-lg sm:text-xl font-semibold text-purple-300 hover:text-purple-200 transition-colors mb-1 truncate">
+                              {tpl.title}
+                            </h3>
+                            {isExpanded ? (
+                              <FaChevronUp className="text-gray-400 text-sm flex-shrink-0" />
+                            ) : (
+                              <FaChevronDown className="text-gray-400 text-sm flex-shrink-0" />
+                            )}
+                          </div>
+                          {isOverride && (
+                            <div className="text-xs text-blue-400 mb-2 flex items-center">
+                              <span className="mr-1">●</span> Angepasste Version
+                            </div>
                           )}
-                        </button>
-                      )}
-                      <div
-                        className="flex-1 cursor-pointer"
-                        onClick={() => toggleTemplateExpansion(tpl.id)}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <h3 className="text-xl font-semibold text-purple-300 hover:text-purple-200 transition-colors mb-1">
-                            {tpl.title}
-                          </h3>
-                          {isExpanded ? (
-                            <FaChevronUp className="text-gray-400 text-sm" />
-                          ) : (
-                            <FaChevronDown className="text-gray-400 text-sm" />
+                          {!isExpanded && (
+                            <div className="text-xs text-gray-500 mt-1 truncate">
+                              {tpl.text
+                                .replace(/[#*_`]/g, "")
+                                .substring(0, 100)}
+                              ...
+                            </div>
                           )}
                         </div>
-                        {isOverride && (
-                          <div className="text-xs text-blue-400 mb-2 flex items-center">
-                            <span className="mr-1">●</span> Angepasste Version
-                          </div>
-                        )}
-                        {!isExpanded && (
-                          <div className="text-xs text-gray-500 mt-1 truncate">
-                            {tpl.text.replace(/[#*_`]/g, "").substring(0, 100)}
-                            ...
-                          </div>
-                        )}
                       </div>
-                      <div className="flex space-x-2 ml-4">
+                      <div className="flex space-x-1 sm:space-x-2 sm:ml-4 justify-end sm:justify-start flex-shrink-0">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleStartEditing(tpl);
                           }}
-                          className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-blue-400"
+                          className="p-1.5 sm:p-2 hover:bg-blue-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-blue-400"
                           title="Template bearbeiten"
                         >
-                          <FaEdit />
+                          <FaEdit className="text-sm" />
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleExportTemplate(tpl);
                           }}
-                          className="p-2 hover:bg-green-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-green-400"
+                          className="p-1.5 sm:p-2 hover:bg-green-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-green-400"
                           title="Template als JSON exportieren"
                         >
-                          <FaDownload />
+                          <FaDownload className="text-sm" />
                         </button>
                         <button
                           onClick={(e) => {
@@ -1457,14 +1478,14 @@ function TemplatesPage() {
                               isOverride
                             );
                           }}
-                          className="p-2 hover:bg-red-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-red-400"
+                          className="p-1.5 sm:p-2 hover:bg-red-500/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-red-400"
                           title={
                             isOverride
                               ? "Anpassungen löschen (auf Standard zurücksetzen)"
                               : "Template aus Ansicht entfernen"
                           }
                         >
-                          <FaTrashAlt />
+                          <FaTrashAlt className="text-sm" />
                         </button>
                       </div>
                     </div>
@@ -1479,13 +1500,15 @@ function TemplatesPage() {
                             />
                           </div>
                         </div>
-                        <div className="flex justify-end">
+                        <div className="flex justify-center sm:justify-end">
                           <button
                             onClick={() => handleSelect(tpl.id)}
-                            className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+                            className="flex items-center justify-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-3 sm:px-4 rounded-lg transition-colors duration-200 text-sm sm:text-base w-full sm:w-auto"
                           >
-                            <span>Mit diesem Template fortfahren</span>
-                            <FaArrowRight />
+                            <span className="whitespace-nowrap">
+                              Mit diesem Template fortfahren
+                            </span>
+                            <FaArrowRight className="text-sm flex-shrink-0" />
                           </button>
                         </div>
                       </>
