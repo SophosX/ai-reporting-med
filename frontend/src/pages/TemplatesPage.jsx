@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   FaArrowRight,
   FaPlus,
@@ -17,6 +17,10 @@ import {
   FaFileImport,
   FaKeyboard,
   FaInfoCircle,
+  FaCheckSquare,
+  FaSquare,
+  FaFileExport,
+  FaTimes,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useTemplate } from "../context/TemplateContext";
@@ -30,6 +34,9 @@ import {
   downloadTemplateAsJSON,
   importTemplateFromFile,
   downloadSampleTemplate,
+  downloadSampleMultipleTemplates,
+  downloadMultipleTemplatesAsJSON,
+  createMultipleUserTemplates,
 } from "../utils/templateService";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
@@ -43,7 +50,6 @@ function TemplatesPage() {
     error,
     refreshTemplates,
     loadTemplates,
-    initialized,
   } = useTemplate();
   const navigate = useNavigate();
 
@@ -66,11 +72,34 @@ function TemplatesPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [importedSuccessfully, setImportedSuccessfully] = useState(false);
   const [importError, setImportError] = useState(null);
+  const [importedData, setImportedData] = useState(null);
+  const [isCreatingMultiple, setIsCreatingMultiple] = useState(false);
+
+  // Selection mode state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedTemplates, setSelectedTemplates] = useState(new Set());
+  const [isExporting, setIsExporting] = useState(false);
 
   // Load templates when component mounts
   useEffect(() => {
     loadTemplates();
   }, [loadTemplates]);
+
+  // Ref to track if component is mounted
+  const isMountedRef = useRef(true);
+
+  // Cleanup function to prevent state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      // Reset all state when component unmounts
+      setSelectionMode(false);
+      setSelectedTemplates(new Set());
+      setIsExporting(false);
+      setIsEditing(null);
+      setIsCreating(false);
+    };
+  }, []);
 
   // Function to toggle template expansion
   const toggleTemplateExpansion = (templateId) => {
@@ -104,16 +133,31 @@ function TemplatesPage() {
   const resetForm = () => {
     setNewTemplate({
       title: "",
-      template_id: "",
       text: "",
     });
     setImportedSuccessfully(false);
     setImportError(null);
+    setImportedData(null);
   };
 
   const handleStartCreating = () => {
+    // Exit selection mode first if active
+    if (selectionMode) {
+      setSelectionMode(false);
+      setSelectedTemplates(new Set());
+    }
+
+    // Cancel any ongoing editing
+    if (isEditing !== null) {
+      setIsEditing(null);
+      setEditedTemplate({
+        title: "",
+        text: "",
+      });
+    }
+
+    // Set creation mode immediately
     setIsCreating(true);
-    setIsEditing(null);
     setImportMode(false);
     resetForm();
   };
@@ -127,38 +171,91 @@ function TemplatesPage() {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (!newTemplate.title || !newTemplate.text) {
-        toast.error("Bitte alle Pflichtfelder ausfüllen");
-        return;
+      // Check if we're creating multiple templates
+      if (importedData?.isMultiple) {
+        setIsCreatingMultiple(true);
+        const result = await createMultipleUserTemplates(
+          importedData.templates
+        );
+
+        if (result.failureCount === 0) {
+          toast.success(
+            `Alle ${result.successCount} Templates erfolgreich erstellt`
+          );
+        } else if (result.successCount === 0) {
+          toast.error(`Fehler: Keine Templates konnten erstellt werden`);
+        } else {
+          toast.warning(
+            `${result.successCount} Templates erstellt, ${result.failureCount} fehlgeschlagen`
+          );
+        }
+
+        // Show detailed results if there were failures
+        if (result.failureCount > 0) {
+          result.failed.forEach((failure) => {
+            toast.error(`Template "${failure.title}": ${failure.error}`);
+          });
+        }
+      } else {
+        // Single template creation
+        if (!newTemplate.title || !newTemplate.text) {
+          toast.error("Bitte alle Pflichtfelder ausfüllen");
+          return;
+        }
+
+        // Check if this is an import to pass the correct flag
+        const isImport = importedData && !importedData.isMultiple;
+        await createUserTemplate(
+          {
+            title: newTemplate.title,
+            text: newTemplate.text,
+            // Exclude template_id to let backend auto-generate unique ID
+          },
+          isImport
+        );
+
+        toast.success("Template erfolgreich erstellt");
       }
 
-      await createUserTemplate({
-        title: newTemplate.title,
-        template_id: newTemplate.template_id || undefined, // Let backend generate if empty
-        text: newTemplate.text,
-      });
-
-      toast.success("Template erfolgreich erstellt");
       setIsCreating(false);
+      setIsCreatingMultiple(false);
       resetForm();
       refreshTemplates();
     } catch (err) {
       toast.error(`Fehler beim Erstellen: ${err.message}`);
+      setIsCreatingMultiple(false);
     }
   };
 
   const handleStartEditing = (template) => {
-    // For default templates, use the template ID directly
-    // For user templates, use the template_db_id property
-    const editId = template.user_created
-      ? template.template_db_id
-      : template.id;
+    // Exit selection mode first if active
+    if (selectionMode) {
+      setSelectionMode(false);
+      setSelectedTemplates(new Set());
+    }
 
-    setIsEditing(editId);
-    setIsCreating(false);
-    setEditedTemplate({
-      title: template.title,
-      text: template.text,
+    // Cancel any creation mode
+    if (isCreating) {
+      setIsCreating(false);
+      setImportMode(false);
+      resetForm();
+    }
+
+    // Use requestAnimationFrame for smoother state transition
+    requestAnimationFrame(() => {
+      if (isMountedRef.current) {
+        // For default templates, use the template ID directly
+        // For user templates, use the template_db_id property
+        const editId = template.user_created
+          ? template.template_db_id
+          : template.id;
+
+        setIsEditing(editId);
+        setEditedTemplate({
+          title: template.title,
+          text: template.text,
+        });
+      }
     });
   };
 
@@ -268,14 +365,41 @@ function TemplatesPage() {
     setIsImporting(true);
     setImportError(null); // Clear previous errors
     try {
-      const templateData = await importTemplateFromFile(file);
-      setNewTemplate({
-        title: templateData.title,
-        template_id: templateData.template_id,
-        text: templateData.text,
-      });
-      setImportedSuccessfully(true);
-      toast.success("Template erfolgreich importiert!");
+      const importResult = await importTemplateFromFile(file);
+
+      // Remove template_id from imported data to allow auto-generation
+      if (importResult.isMultiple) {
+        // Multiple templates imported - remove template_id from all
+        const templatesWithoutIds = importResult.templates.map((template) => ({
+          title: template.title,
+          text: template.text,
+          // Exclude template_id to allow backend auto-generation
+        }));
+
+        setImportedData({
+          ...importResult,
+          templates: templatesWithoutIds,
+        });
+        setImportedSuccessfully(true);
+        toast.success(
+          `${importResult.count} Templates erfolgreich importiert!`
+        );
+      } else {
+        // Single template imported - remove template_id
+        const templateWithoutId = {
+          title: importResult.template.title,
+          text: importResult.template.text,
+          // Exclude template_id to allow backend auto-generation
+        };
+
+        setNewTemplate(templateWithoutId);
+        setImportedData({
+          ...importResult,
+          template: templateWithoutId,
+        });
+        setImportedSuccessfully(true);
+        toast.success("Template erfolgreich importiert!");
+      }
     } catch (error) {
       setImportError(error.message);
       toast.error(`Fehler beim Importieren: ${error.message}`);
@@ -306,6 +430,104 @@ function TemplatesPage() {
       toast.success("Beispiel-Template heruntergeladen!");
     } catch (error) {
       toast.error(`Fehler beim Download: ${error.message}`);
+    }
+  };
+
+  // Download sample multiple templates
+  const handleDownloadSampleMultiple = () => {
+    try {
+      downloadSampleMultipleTemplates();
+      toast.success("Beispiel für mehrere Templates heruntergeladen!");
+    } catch (error) {
+      toast.error(`Fehler beim Download: ${error.message}`);
+    }
+  };
+
+  // Selection mode functions
+  const handleEnterSelectionMode = () => {
+    // First cancel any ongoing editing to prevent MDEditor conflicts
+    if (isEditing !== null) {
+      setIsEditing(null);
+      setEditedTemplate({
+        title: "",
+        text: "",
+      });
+    }
+
+    // Cancel creation mode if active
+    if (isCreating) {
+      setIsCreating(false);
+      setImportMode(false);
+      resetForm();
+    }
+
+    // Enable selection mode immediately
+    setSelectionMode(true);
+    setSelectedTemplates(new Set());
+  };
+
+  const handleExitSelectionMode = () => {
+    // Exit selection mode immediately
+    setSelectionMode(false);
+    setSelectedTemplates(new Set());
+  };
+
+  const handleToggleTemplateSelection = (templateId) => {
+    const newSelected = new Set(selectedTemplates);
+    if (newSelected.has(templateId)) {
+      newSelected.delete(templateId);
+    } else {
+      newSelected.add(templateId);
+    }
+    setSelectedTemplates(newSelected);
+  };
+
+  const handleSelectAllTemplates = () => {
+    const allTemplateIds = templates.map((t) => t.id);
+    setSelectedTemplates(new Set(allTemplateIds));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedTemplates(new Set());
+  };
+
+  // Bulk export functions
+  const handleBulkExportAsJSON = async () => {
+    if (selectedTemplates.size === 0) {
+      toast.error("Bitte wählen Sie mindestens ein Template aus");
+      return;
+    }
+
+    if (isExporting) {
+      return; // Prevent multiple simultaneous exports
+    }
+
+    setIsExporting(true);
+    try {
+      const selectedTemplateObjs = templates.filter((t) =>
+        selectedTemplates.has(t.id)
+      );
+
+      // Use requestAnimationFrame to ensure DOM is stable before export
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      downloadMultipleTemplatesAsJSON(selectedTemplateObjs);
+      toast.success(
+        `${selectedTemplates.size} Templates erfolgreich als JSON exportiert`
+      );
+
+      // Exit selection mode after successful export
+      handleExitSelectionMode();
+    } catch (error) {
+      console.error("Bulk export error:", error);
+      toast.error(`Fehler beim Exportieren: ${error.message}`);
+    } finally {
+      // Use requestAnimationFrame instead of setTimeout for better performance
+      requestAnimationFrame(() => {
+        if (isMountedRef.current) {
+          setIsExporting(false);
+        }
+      });
     }
   };
 
@@ -345,13 +567,32 @@ function TemplatesPage() {
             Radiologie Vorlagen
           </h2>
         </div>
-        <button
-          onClick={handleStartCreating}
-          className="bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200 flex items-center space-x-2"
-        >
-          <FaPlus />
-          <span>Neues Template</span>
-        </button>
+        <div className="flex space-x-3">
+          {selectionMode ? (
+            <button
+              onClick={handleExitSelectionMode}
+              className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg"
+            >
+              <FaTimes className="text-sm" />
+              <span>Auswahl beenden</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleEnterSelectionMode}
+              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-blue-500/25"
+            >
+              <span>Templates Exportieren</span>
+            </button>
+          )}
+          {!selectionMode && (
+            <button
+              onClick={handleStartCreating}
+              className="bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+            >
+              <span>Neues Template</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="text-gray-400 mb-6">
@@ -363,34 +604,80 @@ function TemplatesPage() {
       {templates.length > 0 && (
         <div className="flex justify-between items-center mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
           <div className="text-sm text-gray-300">
-            <span className="font-medium">{templates.length}</span> Templates
-            verfügbar
-            {expandedTemplates.size > 0 && (
-              <span className="ml-2">({expandedTemplates.size} erweitert)</span>
+            {selectionMode ? (
+              <div className="flex items-center space-x-4">
+                <span className="font-medium">
+                  {selectedTemplates.size} von {templates.length} ausgewählt
+                </span>
+                {selectedTemplates.size > 0 && (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleBulkExportAsJSON}
+                      disabled={isExporting}
+                      className="text-sm px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors duration-200 flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FaFileExport className="text-xs" />
+                      <span>Als JSON exportieren</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <span className="font-medium">{templates.length}</span>{" "}
+                Templates verfügbar
+                {expandedTemplates.size > 0 && (
+                  <span className="ml-2">
+                    ({expandedTemplates.size} erweitert)
+                  </span>
+                )}
+              </div>
             )}
           </div>
           <div className="flex space-x-3">
-            <button
-              onClick={expandAllTemplates}
-              className="text-sm px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
-            >
-              <FaExpandArrowsAlt className="text-xs" />
-              <span>Alle erweitern</span>
-            </button>
-            <button
-              onClick={collapseAllTemplates}
-              className="text-sm px-3 py-1 bg-gray-600/20 hover:bg-gray-600/30 text-gray-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
-            >
-              <FaCompressArrowsAlt className="text-xs" />
-              <span>Alle zuklappen</span>
-            </button>
+            {selectionMode ? (
+              <>
+                <button
+                  onClick={handleSelectAllTemplates}
+                  className="text-sm px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                >
+                  <span>Alle auswählen</span>
+                </button>
+                <button
+                  onClick={handleClearSelection}
+                  className="text-sm px-3 py-1 bg-gray-600/20 hover:bg-gray-600/30 text-gray-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                >
+                  <span>Auswahl löschen</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={expandAllTemplates}
+                  className="text-sm px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                >
+                  <FaExpandArrowsAlt className="text-xs" />
+                  <span>Alle erweitern</span>
+                </button>
+                <button
+                  onClick={collapseAllTemplates}
+                  className="text-sm px-3 py-1 bg-gray-600/20 hover:bg-gray-600/30 text-gray-300 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                >
+                  <FaCompressArrowsAlt className="text-xs" />
+                  <span>Alle zuklappen</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
 
       {/* Template Creation Form */}
-      {isCreating && (
-        <div className="mb-8 bg-gray-800 p-6 rounded-xl border border-purple-500/40">
+      {isCreating && !selectionMode && (
+        <div
+          key="template-creation-form"
+          className="mb-8 bg-gray-800 p-6 rounded-xl border border-purple-500/40"
+        >
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-purple-300 flex items-center">
               <FaPlus className="mr-2" />
@@ -463,17 +750,27 @@ function TemplatesPage() {
                             Benötigen Sie ein Beispiel?
                           </h4>
                           <p className="text-sm text-gray-300 mb-3">
-                            Laden Sie eine Beispiel-JSON-Datei herunter, um das
+                            Laden Sie Beispiel-JSON-Dateien herunter, um das
                             korrekte Format zu verstehen.
                           </p>
-                          <button
-                            type="button"
-                            onClick={handleDownloadSample}
-                            className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-lg transition-colors duration-200"
-                          >
-                            <FaDownload />
-                            <span>Beispiel-Template herunterladen</span>
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={handleDownloadSample}
+                              className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-lg transition-colors duration-200"
+                            >
+                              <FaDownload />
+                              <span>Einzelnes Template</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDownloadSampleMultiple}
+                              className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded-lg transition-colors duration-200"
+                            >
+                              <FaDownload />
+                              <span>Mehrere Templates</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -602,12 +899,48 @@ function TemplatesPage() {
                       </div>
                       <div className="flex-1">
                         <p className="text-green-300 font-medium">
-                          Template erfolgreich importiert!
+                          {importedData?.isMultiple
+                            ? `${importedData.count} Templates erfolgreich importiert!`
+                            : "Template erfolgreich importiert!"}
                         </p>
                         <p className="text-sm text-gray-300">
-                          Die Formulardaten wurden automatisch ausgefüllt. Sie
-                          können sie bei Bedarf anpassen.
+                          {importedData?.isMultiple
+                            ? "Die Templates sind bereit zum Erstellen. Überprüfen Sie die Vorschau unten."
+                            : "Das Template ist bereit zum Erstellen. Überprüfen Sie die Vorschau unten."}
                         </p>
+                        {/* Templates preview */}
+                        {importedData && (
+                          <div className="mt-3 space-y-2">
+                            <h5 className="text-sm font-medium text-green-300">
+                              {importedData.isMultiple
+                                ? "Vorschau der importierten Templates:"
+                                : "Vorschau des importierten Templates:"}
+                            </h5>
+                            <div className="max-h-40 overflow-y-auto space-y-2">
+                              {(importedData.isMultiple
+                                ? importedData.templates
+                                : [importedData.template]
+                              ).map((template, index) => (
+                                <div
+                                  key={index}
+                                  className="bg-gray-800/50 rounded p-2 text-xs"
+                                >
+                                  <div className="font-medium text-gray-200">
+                                    {template.title}
+                                  </div>
+                                  {template.template_id && (
+                                    <div className="text-gray-400">
+                                      ID: {template.template_id}
+                                    </div>
+                                  )}
+                                  <div className="text-gray-400 truncate">
+                                    {template.text.substring(0, 60)}...
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -627,8 +960,8 @@ function TemplatesPage() {
             )}
           </div>
 
-          {/* Form Fields - Only show in manual mode OR after successful import */}
-          {(!importMode || importedSuccessfully) && (
+          {/* Form Fields - Only show in manual mode */}
+          {!importMode && (
             <form onSubmit={handleCreateSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -646,27 +979,7 @@ function TemplatesPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Template ID (optional)
-                </label>
-                <input
-                  type="text"
-                  value={newTemplate.template_id}
-                  onChange={(e) =>
-                    setNewTemplate({
-                      ...newTemplate,
-                      template_id: e.target.value,
-                    })
-                  }
-                  className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                  placeholder="z.B. mrt-spine (wird automatisch generiert, wenn leer)"
-                />
-                <p className="text-xs text-gray-400 mt-2">
-                  Nur Buchstaben, Zahlen und Bindestriche. Leer lassen für
-                  automatische Generierung.
-                </p>
-              </div>
+              {/* Template ID field removed - now auto-generated by backend */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -677,6 +990,9 @@ function TemplatesPage() {
                   className="border border-gray-600 rounded-lg overflow-hidden"
                 >
                   <MDEditor
+                    key={`new-template-editor-${
+                      importMode ? "import" : "manual"
+                    }`}
                     value={newTemplate.text}
                     onChange={(value) =>
                       setNewTemplate({ ...newTemplate, text: value || "" })
@@ -701,13 +1017,79 @@ function TemplatesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg flex items-center space-x-2 transition-colors duration-200 shadow-lg hover:shadow-purple-500/25"
+                  disabled={isCreatingMultiple}
+                  className={`px-6 py-2.5 text-white rounded-lg flex items-center space-x-2 transition-colors duration-200 shadow-lg ${
+                    isCreatingMultiple
+                      ? "bg-gray-500 cursor-not-allowed"
+                      : "bg-purple-500 hover:bg-purple-600 hover:shadow-purple-500/25"
+                  }`}
                 >
-                  <FaSave className="text-sm" />
-                  <span>Template speichern</span>
+                  {isCreatingMultiple ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      <span>
+                        {importedData?.isMultiple
+                          ? `Templates werden erstellt...`
+                          : "Template wird erstellt..."}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <FaSave className="text-sm" />
+                      <span>
+                        {importedData?.isMultiple
+                          ? `${importedData.count} Templates erstellen`
+                          : "Template speichern"}
+                      </span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
+          )}
+
+          {/* Template action buttons - shown when any templates are imported */}
+          {importMode && importedSuccessfully && importedData && (
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+              <button
+                type="button"
+                onClick={handleCancelCreate}
+                className="px-6 py-2.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center space-x-2 transition-colors duration-200"
+              >
+                <FaUndo className="text-sm" />
+                <span>Abbrechen</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateSubmit}
+                disabled={isCreatingMultiple}
+                className={`px-6 py-2.5 text-white rounded-lg flex items-center space-x-2 transition-colors duration-200 shadow-lg ${
+                  isCreatingMultiple
+                    ? "bg-gray-500 cursor-not-allowed"
+                    : "bg-purple-500 hover:bg-purple-600 hover:shadow-purple-500/25"
+                }`}
+              >
+                {isCreatingMultiple ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <span>
+                      {importedData.isMultiple
+                        ? "Templates werden erstellt..."
+                        : "Template wird erstellt..."}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <FaSave className="text-sm" />
+                    <span>
+                      {importedData.isMultiple
+                        ? `${importedData.count} Templates erstellen`
+                        : "Template erstellen"}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -724,6 +1106,7 @@ function TemplatesPage() {
               const isSelected = tpl.id === selectedTemplateId;
               const isCurrentlyEditing = isEditing === tpl.template_db_id;
               const isExpanded = expandedTemplates.has(tpl.id);
+              const isSelectedForExport = selectedTemplates.has(tpl.id);
 
               return (
                 <div
@@ -732,6 +1115,8 @@ function TemplatesPage() {
                     ${
                       isSelected
                         ? "border-purple-500 shadow-lg shadow-purple-500/20"
+                        : isSelectedForExport && selectionMode
+                        ? "border-blue-500 shadow-lg shadow-blue-500/20 bg-blue-500/5"
                         : "border-gray-700/50"
                     }
                   `}
@@ -766,6 +1151,9 @@ function TemplatesPage() {
                           </label>
                           <div data-color-mode="dark">
                             <MDEditor
+                              key={`edit-user-template-${tpl.template_db_id}-${
+                                isCurrentlyEditing ? "editing" : "stable"
+                              }`}
                               value={editedTemplate.text}
                               onChange={(value) =>
                                 setEditedTemplate({
@@ -803,6 +1191,21 @@ function TemplatesPage() {
                   ) : (
                     <>
                       <div className="flex justify-between items-start mb-2">
+                        {selectionMode && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTemplateSelection(tpl.id);
+                            }}
+                            className="mr-3 mt-1 p-1 rounded transition-colors duration-200 hover:bg-gray-700"
+                          >
+                            {isSelectedForExport ? (
+                              <FaCheckSquare className="text-blue-400 text-lg" />
+                            ) : (
+                              <FaSquare className="text-gray-400 text-lg hover:text-gray-300" />
+                            )}
+                          </button>
+                        )}
                         <div
                           className="flex-1 cursor-pointer"
                           onClick={() => toggleTemplateExpansion(tpl.id)}
@@ -897,6 +1300,7 @@ function TemplatesPage() {
             const isSelected = tpl.id === selectedTemplateId;
             const isCurrentlyEditing = isEditing === tpl.id;
             const isExpanded = expandedTemplates.has(tpl.id);
+            const isSelectedForExport = selectedTemplates.has(tpl.id);
             // Check if this is an override of a default template
             const isOverride = tpl.is_default_override === true;
 
@@ -907,6 +1311,8 @@ function TemplatesPage() {
                   ${
                     isSelected
                       ? "border-purple-500 shadow-lg shadow-purple-500/20"
+                      : isSelectedForExport && selectionMode
+                      ? "border-blue-500 shadow-lg shadow-blue-500/20 bg-blue-500/5"
                       : "border-gray-700/50"
                   }
                   ${isOverride ? "border-l-4 border-l-blue-500" : ""}
@@ -940,6 +1346,9 @@ function TemplatesPage() {
                         </label>
                         <div data-color-mode="dark">
                           <MDEditor
+                            key={`edit-default-template-${tpl.id}-${
+                              isCurrentlyEditing ? "editing" : "stable"
+                            }`}
                             value={editedTemplate.text}
                             onChange={(value) =>
                               setEditedTemplate({
@@ -977,6 +1386,21 @@ function TemplatesPage() {
                 ) : (
                   <>
                     <div className="flex justify-between items-start mb-2">
+                      {selectionMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleTemplateSelection(tpl.id);
+                          }}
+                          className="mr-3 mt-1 p-1 rounded transition-colors duration-200 hover:bg-gray-700"
+                        >
+                          {isSelectedForExport ? (
+                            <FaCheckSquare className="text-blue-400 text-lg" />
+                          ) : (
+                            <FaSquare className="text-gray-400 text-lg hover:text-gray-300" />
+                          )}
+                        </button>
+                      )}
                       <div
                         className="flex-1 cursor-pointer"
                         onClick={() => toggleTemplateExpansion(tpl.id)}

@@ -33,15 +33,12 @@ function NewReportPage() {
   const [reportText, setReportText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [userCustomPrompt, setUserCustomPrompt] = useState("");
   const [hasUserCustomPrompt, setHasUserCustomPrompt] = useState(false);
-  const [useUserCustomPrompt, setUseUserCustomPrompt] = useState(false);
-  const [isEditingCustomPrompt, setIsEditingCustomPrompt] = useState(false);
-  const [tempCustomPrompt, setTempCustomPrompt] = useState("");
-  const [isCreatingCustomPrompt, setIsCreatingCustomPrompt] = useState(false);
   const [loadingCustomPrompt, setLoadingCustomPrompt] = useState(true);
+  const [hasPromptChanges, setHasPromptChanges] = useState(false);
+  const [savingPrompt, setSavingPrompt] = useState(false);
 
   // Default prompt to show in the textarea
   const defaultPrompt =
@@ -81,27 +78,22 @@ function NewReportPage() {
     }
   }, [selectedTemplateId, templates, loadTemplates]);
 
-  // Initialize custom prompt with default value
-  useEffect(() => {
-    if (!customPrompt) {
-      setCustomPrompt(defaultPrompt);
-    }
-  }, [defaultPrompt]);
-
   // Load user's custom prompt on component mount
   useEffect(() => {
     loadUserCustomPrompt();
   }, []);
 
-  // Update the customPrompt based on user's choice
+  // Initialize prompt with user's custom prompt or default
   useEffect(() => {
-    if (useUserCustomPrompt && hasUserCustomPrompt) {
-      setCustomPrompt(userCustomPrompt);
-    } else {
-      setCustomPrompt(defaultPrompt);
+    if (!loadingCustomPrompt) {
+      if (hasUserCustomPrompt) {
+        setCustomPrompt(userCustomPrompt);
+      } else {
+        setCustomPrompt(defaultPrompt);
+      }
     }
   }, [
-    useUserCustomPrompt,
+    loadingCustomPrompt,
     hasUserCustomPrompt,
     userCustomPrompt,
     defaultPrompt,
@@ -137,7 +129,8 @@ function NewReportPage() {
     }
   };
 
-  const saveUserCustomPrompt = async (promptText) => {
+  const saveUserCustomPrompt = async () => {
+    setSavingPrompt(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -152,105 +145,36 @@ function NewReportPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ custom_prompt: promptText }),
+        body: JSON.stringify({ custom_prompt: customPrompt }),
       });
 
       if (response.ok) {
         const data = await response.json();
         setUserCustomPrompt(data.custom_prompt);
         setHasUserCustomPrompt(true);
-        toast.success("Custom Prompt gespeichert!");
+        setHasPromptChanges(false);
+        toast.success("Prompt gespeichert!");
         return true;
       } else {
-        throw new Error("Fehler beim Speichern des Custom Prompts");
+        throw new Error("Fehler beim Speichern des Prompts");
       }
     } catch (error) {
       console.error("Error saving custom prompt:", error);
-      toast.error("Fehler beim Speichern des Custom Prompts");
+      toast.error("Fehler beim Speichern des Prompts");
       return false;
+    } finally {
+      setSavingPrompt(false);
     }
   };
 
-  const deleteUserCustomPrompt = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Bitte melden Sie sich an");
-        return;
-      }
+  const handlePromptChange = (value) => {
+    setCustomPrompt(value);
 
-      const response = await fetch(`${API_URL}/custom-prompt/`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        setUserCustomPrompt("");
-        setHasUserCustomPrompt(false);
-        setUseUserCustomPrompt(false);
-        toast.success("Custom Prompt gelöscht!");
-      } else {
-        throw new Error("Fehler beim Löschen des Custom Prompts");
-      }
-    } catch (error) {
-      console.error("Error deleting custom prompt:", error);
-      toast.error("Fehler beim Löschen des Custom Prompts");
-    }
-  };
-
-  const handleCreateCustomPrompt = () => {
-    setTempCustomPrompt(defaultPrompt);
-    setIsCreatingCustomPrompt(true);
-  };
-
-  const handleSaveNewCustomPrompt = async () => {
-    if (!tempCustomPrompt.trim()) {
-      toast.error("Bitte geben Sie einen Prompt ein");
-      return;
-    }
-
-    const success = await saveUserCustomPrompt(tempCustomPrompt);
-    if (success) {
-      setIsCreatingCustomPrompt(false);
-      setTempCustomPrompt("");
-      setUseUserCustomPrompt(true);
-    }
-  };
-
-  const handleCancelCreateCustomPrompt = () => {
-    setIsCreatingCustomPrompt(false);
-    setTempCustomPrompt("");
-  };
-
-  const handleEditCustomPrompt = () => {
-    setTempCustomPrompt(userCustomPrompt);
-    setIsEditingCustomPrompt(true);
-  };
-
-  const handleSaveEditCustomPrompt = async () => {
-    if (!tempCustomPrompt.trim()) {
-      toast.error("Bitte geben Sie einen Prompt ein");
-      return;
-    }
-
-    const success = await saveUserCustomPrompt(tempCustomPrompt);
-    if (success) {
-      setIsEditingCustomPrompt(false);
-      setTempCustomPrompt("");
-    }
-  };
-
-  const handleCancelEditCustomPrompt = () => {
-    setIsEditingCustomPrompt(false);
-    setTempCustomPrompt("");
-  };
-
-  const handleDeleteCustomPrompt = () => {
-    if (window.confirm("Möchten Sie Ihren Custom Prompt wirklich löschen?")) {
-      deleteUserCustomPrompt();
-    }
+    // Check if the current prompt is different from the saved version
+    const originalPrompt = hasUserCustomPrompt
+      ? userCustomPrompt
+      : defaultPrompt;
+    setHasPromptChanges(value !== originalPrompt);
   };
 
   const handleTemplateChange = (e) => {
@@ -496,262 +420,83 @@ function NewReportPage() {
             />
           </div>
 
-          {/* Prompt Selection Section */}
+          {/* Prompt Configuration Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium text-blue-400 flex items-center space-x-2">
                 <FaRobot />
                 <span>KI-Verhalten konfigurieren</span>
               </h3>
+              {hasPromptChanges && (
+                <button
+                  type="button"
+                  onClick={saveUserCustomPrompt}
+                  disabled={savingPrompt}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                >
+                  {savingPrompt ? (
+                    <>
+                      <FaCircleNotch className="animate-spin" />
+                      <span>Speichern...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaSave />
+                      <span>Änderungen speichern</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
-            {/* Prompt Type Selector */}
-            {!loadingCustomPrompt && (
-              <div className="flex flex-col space-y-3">
-                {/* System Prompt Option */}
-                <div
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                    !useUserCustomPrompt
-                      ? "bg-blue-600/20 border-blue-500"
-                      : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
-                  }`}
-                  onClick={() => setUseUserCustomPrompt(false)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <FaRobot className="text-blue-400" />
-                      <div>
-                        <h4 className="font-medium text-white">
-                          System Prompt
-                        </h4>
-                        <p className="text-sm text-gray-400">
-                          Standard KI-Verhalten für medizinische Berichte
-                        </p>
-                      </div>
-                    </div>
-                    {!useUserCustomPrompt ? (
-                      <FaToggleOn className="text-blue-400 text-xl" />
-                    ) : (
-                      <FaToggleOff className="text-gray-400 text-xl" />
-                    )}
-                  </div>
+            {/* Prompt Display Panel */}
+            <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <label
+                htmlFor="customPrompt"
+                className="block mb-2 text-sm text-gray-300 flex items-center space-x-2"
+              >
+                <FaRobot className="text-blue-400" />
+                <span>
+                  {hasUserCustomPrompt
+                    ? "Ihr gespeicherter Prompt:"
+                    : "System Prompt:"}
+                </span>
+              </label>
+              {loadingCustomPrompt ? (
+                <div className="flex items-center space-x-2 text-gray-400 h-32 justify-center">
+                  <FaCircleNotch className="animate-spin" />
+                  <span>Lade Prompt...</span>
                 </div>
-
-                {/* Custom Prompt Option */}
-                {hasUserCustomPrompt ? (
-                  <div
-                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                      useUserCustomPrompt
-                        ? "bg-green-600/20 border-green-500"
-                        : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
-                    }`}
-                    onClick={() => setUseUserCustomPrompt(true)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <FaUser className="text-green-400" />
-                        <div>
-                          <h4 className="font-medium text-white">
-                            Mein Custom Prompt
-                          </h4>
-                          <p className="text-sm text-gray-400">
-                            Ihr persönlicher KI-Prompt
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {useUserCustomPrompt ? (
-                          <FaToggleOn className="text-green-400 text-xl" />
-                        ) : (
-                          <FaToggleOff className="text-gray-400 text-xl" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditCustomPrompt();
-                          }}
-                          className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
-                          title="Bearbeiten"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCustomPrompt();
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                          title="Löschen"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-lg border border-dashed border-gray-600 hover:border-gray-500 transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <FaUser className="text-gray-400" />
-                        <div>
-                          <h4 className="font-medium text-gray-300">
-                            Custom Prompt erstellen
-                          </h4>
-                          <p className="text-sm text-gray-500">
-                            Erstellen Sie Ihren eigenen KI-Prompt
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleCreateCustomPrompt}
-                        className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                      >
-                        <FaPlus />
-                        <span>Erstellen</span>
-                      </button>
-                    </div>
-                  </div>
+              ) : (
+                <textarea
+                  id="customPrompt"
+                  rows="8"
+                  value={customPrompt}
+                  onChange={(e) => handlePromptChange(e.target.value)}
+                  className="w-full p-3 bg-gray-800/70 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-sm"
+                />
+              )}
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-gray-500">
+                  Definiert das Verhalten der KI bei der Berichterstellung
+                </p>
+                {hasPromptChanges && (
+                  <p className="text-xs text-orange-400">
+                    Ungespeicherte Änderungen
+                  </p>
                 )}
               </div>
-            )}
-
-            {loadingCustomPrompt && (
-              <div className="flex items-center space-x-2 text-gray-400">
-                <FaCircleNotch className="animate-spin" />
-                <span>Lade Prompt-Einstellungen...</span>
-              </div>
-            )}
-          </div>
-
-          {/* Prompt Display Panel - Always visible now */}
-          <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-            <label
-              htmlFor="customPrompt"
-              className="block mb-2 text-sm text-gray-300 flex items-center space-x-2"
-            >
-              {useUserCustomPrompt && hasUserCustomPrompt ? (
-                <>
-                  <FaUser className="text-green-400" />
-                  <span>Ihr Custom Prompt:</span>
-                </>
-              ) : (
-                <>
-                  <FaRobot className="text-blue-400" />
-                  <span>System Prompt:</span>
-                </>
+              {selectedTemplateId && (
+                <p className="text-xs text-gray-400 mt-2">
+                  Sie verwenden die Vorlage:{" "}
+                  <span className="font-medium text-blue-400">
+                    {templates.find((t) => t.id === selectedTemplateId)
+                      ?.title || "Unbekannte Vorlage"}
+                  </span>
+                </p>
               )}
-            </label>
-            <textarea
-              id="customPrompt"
-              rows="8"
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              className="w-full p-3 bg-gray-800/70 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-sm"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Definiert das Verhalten der KI bei der Berichterstellung
-            </p>
-            {selectedTemplateId && (
-              <p className="text-xs text-gray-400 mt-2">
-                Sie verwenden die Vorlage:{" "}
-                <span className="font-medium text-blue-400">
-                  {templates.find((t) => t.id === selectedTemplateId)?.title ||
-                    "Unbekannte Vorlage"}
-                </span>
-              </p>
-            )}
+            </div>
           </div>
-
-          {/* Create Custom Prompt Modal */}
-          {isCreatingCustomPrompt && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-800 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <h3 className="text-xl font-bold text-blue-400 mb-4 flex items-center space-x-2">
-                  <FaPlus />
-                  <span>Custom Prompt erstellen</span>
-                </h3>
-                <div className="mb-4">
-                  <label className="block mb-2 text-sm text-gray-300">
-                    Ihr Custom Prompt:
-                  </label>
-                  <textarea
-                    rows="12"
-                    value={tempCustomPrompt}
-                    onChange={(e) => setTempCustomPrompt(e.target.value)}
-                    className="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-sm"
-                    placeholder="Geben Sie hier Ihren Custom Prompt ein..."
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Definieren Sie, wie sich die KI bei der Berichterstellung
-                    verhalten soll
-                  </p>
-                </div>
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={handleCancelCreateCustomPrompt}
-                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                  >
-                    Abbrechen
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveNewCustomPrompt}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center space-x-2"
-                  >
-                    <FaSave />
-                    <span>Speichern</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Edit Custom Prompt Modal */}
-          {isEditingCustomPrompt && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-800 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <h3 className="text-xl font-bold text-green-400 mb-4 flex items-center space-x-2">
-                  <FaEdit />
-                  <span>Custom Prompt bearbeiten</span>
-                </h3>
-                <div className="mb-4">
-                  <label className="block mb-2 text-sm text-gray-300">
-                    Ihr Custom Prompt:
-                  </label>
-                  <textarea
-                    rows="12"
-                    value={tempCustomPrompt}
-                    onChange={(e) => setTempCustomPrompt(e.target.value)}
-                    className="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all resize-none text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Bearbeiten Sie Ihren Custom Prompt
-                  </p>
-                </div>
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={handleCancelEditCustomPrompt}
-                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                  >
-                    Abbrechen
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveEditCustomPrompt}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center space-x-2"
-                  >
-                    <FaSave />
-                    <span>Änderungen speichern</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mt-8">
             {/* Template Selection */}
