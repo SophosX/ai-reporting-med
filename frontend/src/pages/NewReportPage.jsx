@@ -12,6 +12,9 @@ import {
   FaToggleOff,
   FaRobot,
   FaUser,
+  FaFlask,
+  FaClock,
+  FaCheckCircle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useTemplate } from "../context/TemplateContext";
@@ -19,6 +22,10 @@ import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
 import API_URL from "../utils/apiConfig";
 import Select from "react-select";
+import StudyTimerBar from "../components/StudyTimerBar";
+import StudyTimerModal from "../components/StudyTimerModal";
+import { authenticatedFetch } from "../utils/auth";
+import { useStudy } from "../context/StudyContext";
 
 function NewReportPage() {
   const navigate = useNavigate();
@@ -29,6 +36,21 @@ function NewReportPage() {
     loading: templatesLoading,
     loadTemplates,
   } = useTemplate();
+  const {
+    isStudyMode,
+    setIsStudyMode,
+    studySessionId,
+    setStudySessionId,
+    studyTimerData,
+    setStudyTimerData,
+    setGeneratedReportId,
+    setOriginalGeneratedText,
+    setFirstGenerationTime,
+    startStudySession,
+    editOperations,
+    setEditOperations,
+    checkStudyMode,
+  } = useStudy();
   const [inputText, setInputText] = useState("");
   const [reportText, setReportText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -39,36 +61,31 @@ function NewReportPage() {
   const [loadingCustomPrompt, setLoadingCustomPrompt] = useState(true);
   const [hasPromptChanges, setHasPromptChanges] = useState(false);
   const [savingPrompt, setSavingPrompt] = useState(false);
+  
+  // Local study mode states (only for this page)
+  const [showStudyTimer, setShowStudyTimer] = useState(false);
+  const [showStudyModal, setShowStudyModal] = useState(false);
 
   // Default prompt to show in the textarea
   const defaultPrompt =
-    "Du bist ein erfahrener Radiologieprofessor. Deine Aufgabe besteht darin, Sprachdiktate in standardisierte radiologische Berichte umzuwandeln.\n" +
-    "Die Diktate enthalten ausschließlich relevante Pathologien aus einer radiologischen Untersuchung. Ziel ist es, diese Pathologien in strukturierter Form in einen Fließtext zu integrieren.\n" +
-    "Dabei gliederst du die Inhalte nach Körperregion und setzt sie in einen passenden Textbaustein um.\n" +
-    "Ein radiologischer Bericht besteht aus zwei Teilen:\n\n" +
-    "Befund:\n" +
-    "Dieser Abschnitt beschreibt objektiv (nicht wertend) die in der Bildgebung erkennbaren Veränderungen.\n" +
-    "• Zunächst werden relevante Voruntersuchungen genannt, die zum Vergleich herangezogen wurden.\n\n" +
-    "• Danach folgen eventuelle technische Limitationen (z. B. eingeschränkte Beurteilbarkeit durch Atemartefakte).\n\n" +
-    "• Anschließend erfolgt eine systematische Beschreibung der Organsysteme, geordnet nach anatomischer oder pathologischer Zugehörigkeit.\n\n" +
-    "Beachte dabei folgende Punkte:\n" +
-    '• Vermeide Überschriften oder Sammelbezeichnungen wie "Technische Limitation".\n\n' +
-    '• Entferne Redundanzen sowie wertende Formulierungen (z. B. "vereinbar mit ...", "passend zu ...", "DD: ...") – diese gehören in die Beurteilung.\n\n' +
-    '• Erhalte Referenzen zu Serien- und Bildnummern (z. B. "(501/16)", "(S10/B16)") unverändert.\n\n' +
-    '• Ersetze Formulierungen wie "Z. n. ...", "Zustand nach ..." oder "Bei Z. n. ..." durch die professionellere Ausdrucksweise: "Stattgehabte ...".\n\n' +
-    "Der Text soll flüssig, neutral und präzise formuliert sein – in typischem radiologischem Sprachstil. Vermeide Stichpunkte und Überschriften. Verwende vollständige Sätze.\n\n" +
-    "Beurteilung:\n" +
-    "Hier erfolgt die zusammenfassende Bewertung der beschriebenen Befunde mit Einordnung der pathologischen/klinischen Relevanz.\n" +
-    "• Liste alle relevanten pathologischen Veränderungen knapp und präzise, priorisiert nach ihrer klinischen Bedeutung.\n\n" +
-    '• Gib den genannten Befunden konkrete Diagnosen, z. B.: "Leberraumforderung passend zu einem HCC".\n\n' +
-    '• Bei unklaren Befunden verwende "DD: ...", z. B.: "Befund im rechten Oberlappen passend zu pneumonischen Infiltraten, DD: Tumoratelektase".\n\n' +
-    "• Die Beurteilung erfolgt stichpunktartig und prägnant, nicht in Fließtextform.\n\n" +
-    "• Auch hier gilt: radiologischer Fachstil.";
+    "Du bist ein Assistent für Radiologinnen und Radiologen. Du erhältst als Eingabe unstrukturierte, teils fehlerhafte, frei formulierte Texte oder Diktate mit radiologischen Beobachtungen. Deine Aufgabe ist es, ausschließlich auf Grundlage dieser Angaben einen sprachlich korrekten, vollständig strukturierten radiologischen Befund in deutscher Sprache zu generieren.\n\n" +
+    "Verbindliche Vorgaben:\n\n" +
+    "- Verwende ausschließlich Informationen aus dem Eingabetext.\n" +
+    "- Keine Ergänzungen, Vermutungen oder erfundenen Inhalte.\n" +
+    "- Jeder Abschnitt des Templates muss im generierten Bericht vollständig enthalten sein.\n" +
+    "- Wenn im Eingabetext keine Angaben zu einem Abschnitt gemacht wurden, ist die unauffällige Standardformulierung des Templates zu übernehmen.\n" +
+    "- Nur explizite Informationen im Eingabetext dürfen den jeweiligen Abschnitt verändern.\n" +
+    "- Die Reihenfolge der Abschnitte im Template darf unter keinen Umständen verändert werden.\n" +
+    "- Der Befundtext muss als einzeiliger Fließtext ausgegeben werden – keine Segmentierung, keine Zwischenüberschriften, keine Absätze.\n" +
+    "- Verwende den typischen, stichpunktartigen Stil radiologischer Befunde: kurz, sachlich, telegraphisch, ohne erklärende oder narrative Sprache.";
 
   // Load template when component mounts or when selectedTemplateId changes
   useEffect(() => {
     // Load templates if they're not already loaded
     loadTemplates();
+    
+    // Check study mode status when component mounts
+    checkStudyMode();
 
     if (selectedTemplateId && templates.length > 0) {
       const found = templates.find((t) => t.id === selectedTemplateId);
@@ -76,12 +93,23 @@ function NewReportPage() {
         toast.info(`Template "${found.title}" geladen`);
       }
     }
-  }, [selectedTemplateId, templates, loadTemplates]);
+  }, [selectedTemplateId, templates, loadTemplates, checkStudyMode]);
 
   // Load user's custom prompt on component mount
   useEffect(() => {
     loadUserCustomPrompt();
   }, []);
+
+  // Show study modal when in study mode
+  useEffect(() => {
+    if (isStudyMode && !studySessionId && !showStudyTimer && !showStudyModal) {
+      setShowStudyModal(true);
+    } else if (!isStudyMode) {
+      // If study mode is turned off, hide modal and timer
+      setShowStudyModal(false);
+      setShowStudyTimer(false);
+    }
+  }, [isStudyMode, studySessionId, showStudyTimer, showStudyModal]);
 
   // Initialize prompt with user's custom prompt or default
   useEffect(() => {
@@ -128,6 +156,47 @@ function NewReportPage() {
       setLoadingCustomPrompt(false);
     }
   };
+
+
+  const handleStudyTimerStart = async (timerData) => {
+    try {
+      const sessionId = await startStudySession(selectedTemplateId);
+      setStudyTimerData(timerData);
+      setShowStudyModal(false);
+      setShowStudyTimer(true);
+      toast.info("Studiensitzung gestartet. Timer läuft.");
+    } catch (error) {
+      console.error("Error starting study session:", error);
+      toast.error("Fehler beim Starten der Studiensitzung");
+    }
+  };
+
+  const handleStudyTimerCancel = () => {
+    setShowStudyModal(false);
+    setIsStudyMode(false);
+    navigate("/");
+  };
+
+  const handleStudySessionCancel = async () => {
+    const confirmCancel = window.confirm(
+      "Sind Sie sicher, dass Sie die Studiensitzung abbrechen möchten? Alle Timer-Daten gehen verloren."
+    );
+    
+    if (confirmCancel) {
+      // If session was started, we might want to delete it
+      if (studySessionId) {
+        // You could add an API call here to mark the session as cancelled
+      }
+      
+      setShowStudyTimer(false);
+      setStudySessionId(null);
+      setIsStudyMode(false);
+      toast.info("Studiensitzung abgebrochen.");
+      navigate("/");
+    }
+  };
+
+
 
   const saveUserCustomPrompt = async () => {
     setSavingPrompt(true);
@@ -274,6 +343,7 @@ function NewReportPage() {
 
   const handleSaveReport = async (e) => {
     e.preventDefault();
+    
     setIsGenerating(true);
     setReportVisible(false);
 
@@ -309,10 +379,13 @@ function NewReportPage() {
 
       const data = await response.json();
       setReportText(data.report_text);
+      setOriginalGeneratedText(data.report_text);
+      setGeneratedReportId(data.id);
       setReportVisible(true);
+      setFirstGenerationTime(new Date());
       toast.success("Bericht erfolgreich erstellt");
 
-      // Navigate to the created report page instead of the home page
+      // Navigate to report detail page after a short delay
       setTimeout(() => {
         navigate(`/reports/${data.id}`);
       }, 1500);
@@ -393,8 +466,29 @@ function NewReportPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
-      <div className="glass-effect rounded-xl shadow-lg p-8 hover-lift">
+    <>
+      {/* Study Info Modal - appears first when in study mode */}
+      {showStudyModal && (
+        <StudyTimerModal
+          isOpen={showStudyModal}
+          onStart={handleStudyTimerStart}
+          onCancel={handleStudyTimerCancel}
+        />
+      )}
+      
+      {/* Study Timer Bar - appears at top after starting timer */}
+      {isStudyMode && showStudyTimer && (
+        <StudyTimerBar 
+          onSessionStart={handleStudyTimerStart}
+          studySessionId={studySessionId}
+          onTimerData={setStudyTimerData}
+          onCancel={handleStudySessionCancel}
+          initialTimerData={studyTimerData}
+        />
+      )}
+      
+      <div className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white ${isStudyMode && showStudyTimer ? 'pt-20' : ''}`}>
+        <div className="glass-effect rounded-xl shadow-lg p-8 hover-lift">
         <div className="flex items-center space-x-3 mb-6">
           <h1 className="text-2xl font-bold text-blue-400">
             Medizinischen Bericht erstellen
@@ -592,7 +686,13 @@ function NewReportPage() {
             <div data-color-mode="dark">
               <MDEditor
                 value={reportText}
-                onChange={setReportText}
+                onChange={(value) => {
+                  setReportText(value);
+                  // Track edit operations in study mode
+                  if (isStudyMode && studySessionId && value !== originalGeneratedText) {
+                    setEditOperations(prev => prev + 1);
+                  }
+                }}
                 preview="preview"
                 height={400}
                 previewOptions={{
@@ -605,7 +705,9 @@ function NewReportPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+      
+    </>
   );
 }
 

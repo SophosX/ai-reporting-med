@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { FaFlask, FaInfoCircle, FaUser, FaBriefcase } from "react-icons/fa";
 import API_URL from "../utils/apiConfig";
 
 function LoginPage() {
@@ -13,6 +14,12 @@ function LoginPage() {
   const [regPassword, setRegPassword] = useState("");
   const [regPasswordConfirm, setRegPasswordConfirm] = useState("");
   const [regErrors, setRegErrors] = useState({});
+  
+  // Study fields
+  const [isStudyParticipant, setIsStudyParticipant] = useState(false);
+  const [studyToken, setStudyToken] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
 
   const navigate = useNavigate();
 
@@ -44,6 +51,19 @@ function LoginPage() {
       errors.passwordConfirm = "Passwords do not match";
     }
 
+    // Study participant validation
+    if (isStudyParticipant) {
+      if (!studyToken.trim()) {
+        errors.studyToken = "Study token is required for study participants";
+      }
+      if (!fullName.trim()) {
+        errors.fullName = "Full name is required for study participants";
+      }
+      if (!experienceLevel) {
+        errors.experienceLevel = "Experience level is required for study participants";
+      }
+    }
+
     setRegErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -61,7 +81,18 @@ function LoginPage() {
       if (response.ok) {
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user_id", data.user_id);
-        toast.success("Login successful!");
+        // Store user information
+        const userInfo = {
+          id: data.user_id,
+          username: data.username,
+          email: data.email,
+          full_name: data.full_name,
+          study_participant: data.study_participant,
+          experience_level: data.experience_level,
+          study_mode_active: data.study_mode_active
+        };
+        localStorage.setItem("user", JSON.stringify(userInfo));
+        toast.success("Login erfolgreich!");
         navigate("/");
       } else {
         toast.error(data.detail || "Login failed");
@@ -92,6 +123,11 @@ function LoginPage() {
           email: regEmail,
           password: regPassword,
           password_confirm: regPasswordConfirm,
+          ...(isStudyParticipant && {
+            study_token: studyToken,
+            full_name: fullName,
+            experience_level: experienceLevel,
+          }),
         }),
       });
       const data = await response.json();
@@ -103,6 +139,10 @@ function LoginPage() {
         setRegPassword("");
         setRegPasswordConfirm("");
         setRegErrors({});
+        setIsStudyParticipant(false);
+        setStudyToken("");
+        setFullName("");
+        setExperienceLevel("");
 
         // Show success message and switch to login tab
         toast.success("Registration successful! Please login.");
@@ -121,6 +161,8 @@ function LoginPage() {
             setRegErrors({ email: data.detail });
           } else if (data.detail.includes("Passwords do not match")) {
             setRegErrors({ passwordConfirm: data.detail });
+          } else if (data.detail.includes("Invalid study token")) {
+            setRegErrors({ studyToken: data.detail });
           } else {
             toast.error(data.detail);
           }
@@ -276,6 +318,97 @@ function LoginPage() {
                 </p>
               )}
             </div>
+            
+            {/* Study Participation Section */}
+            <div className="mb-4 p-3 bg-purple-900/20 border border-purple-600/50 rounded-lg">
+              <div className="flex items-center mb-2">
+                <FaFlask className="text-purple-400 mr-2" />
+                <h3 className="font-semibold">Studienteilnahme</h3>
+              </div>
+              
+              <label className="flex items-center cursor-pointer mb-3">
+                <input
+                  type="checkbox"
+                  checked={isStudyParticipant}
+                  onChange={(e) => setIsStudyParticipant(e.target.checked)}
+                  className="mr-2 text-purple-600 bg-gray-600 border-gray-500 rounded focus:ring-purple-500"
+                />
+                <span className="text-sm">
+                  Ich möchte an der Studie zur radiologischen Effizienz teilnehmen
+                </span>
+              </label>
+              
+              {isStudyParticipant && (
+                <div className="space-y-3 mt-3">
+                  <div className="p-2 bg-blue-900/30 border border-blue-700 rounded text-xs">
+                    <div className="flex items-start">
+                      <FaInfoCircle className="text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+                      <p className="text-blue-200">
+                        Diese Studie untersucht die Effizienz der KI-gestützten Berichterstellung.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block mb-1 text-sm">Studien-Token *</label>
+                    <input
+                      type="text"
+                      value={studyToken}
+                      onChange={(e) => setStudyToken(e.target.value.toUpperCase())}
+                      className={`w-full p-2 bg-gray-600 rounded border ${
+                        regErrors.studyToken ? "border-red-500" : "border-gray-500"
+                      }`}
+                      placeholder="Token eingeben"
+                    />
+                    {regErrors.studyToken && (
+                      <p className="text-red-400 text-xs mt-1">{regErrors.studyToken}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block mb-1 text-sm">
+                      <FaUser className="inline mr-1" />
+                      Vollständiger Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className={`w-full p-2 bg-gray-600 rounded border ${
+                        regErrors.fullName ? "border-red-500" : "border-gray-500"
+                      }`}
+                      placeholder="Dr. Max Mustermann"
+                    />
+                    {regErrors.fullName && (
+                      <p className="text-red-400 text-xs mt-1">{regErrors.fullName}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block mb-1 text-sm">
+                      <FaBriefcase className="inline mr-1" />
+                      Erfahrungsstufe *
+                    </label>
+                    <select
+                      value={experienceLevel}
+                      onChange={(e) => setExperienceLevel(e.target.value)}
+                      className={`w-full p-2 bg-gray-600 rounded border ${
+                        regErrors.experienceLevel ? "border-red-500" : "border-gray-500"
+                      }`}
+                    >
+                      <option value="">Wählen Sie Ihre Erfahrungsstufe</option>
+                      <option value="assistenzarzt">Assistenzarzt</option>
+                      <option value="facharzt">Facharzt</option>
+                      <option value="oberarzt">Oberarzt</option>
+                    </select>
+                    {regErrors.experienceLevel && (
+                      <p className="text-red-400 text-xs mt-1">{regErrors.experienceLevel}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <button
               type="submit"
               className="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-semibold"

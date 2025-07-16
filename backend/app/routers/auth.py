@@ -27,11 +27,36 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email address is already registered. Please use a different email."
         )
 
+    # Validate study token if provided
+    study_participant = False
+    if user_data.study_token:
+        # Valid tokens for the study (in production, these would be in a database)
+        VALID_STUDY_TOKENS = ["RADEFF2024", "STUDYMED2024", "AIRAD2024"]
+        
+        if user_data.study_token not in VALID_STUDY_TOKENS:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid study token. Please check your invitation email for the correct token."
+            )
+        
+        # If study token is valid, require full name and experience level
+        if not user_data.full_name or not user_data.experience_level:
+            raise HTTPException(
+                status_code=400,
+                detail="Full name and experience level are required for study participants."
+            )
+        
+        study_participant = True
+
     hashed_pw = get_password_hash(user_data.password)
     new_user = User(
         username=user_data.username,
         email=user_data.email,
-        password=hashed_pw
+        password=hashed_pw,
+        full_name=user_data.full_name,
+        study_participant=study_participant,
+        study_token=user_data.study_token if study_participant else None,
+        experience_level=user_data.experience_level.value if user_data.experience_level else None
     )
     db.add(new_user)
     db.commit()
@@ -61,4 +86,14 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
         expires_delta=access_token_expires
     )
     
-    return {"access_token": access_token, "token_type": "bearer", "user_id": user.id}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "user_id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.full_name,
+        "study_participant": user.study_participant,
+        "experience_level": user.experience_level,
+        "study_mode_active": user.study_mode_active
+    }

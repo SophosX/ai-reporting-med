@@ -36,6 +36,7 @@ export const isAuthenticated = () => {
 export const logout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user_id");
+  localStorage.removeItem("user");
 };
 
 // To prevent multiple session expired messages
@@ -83,4 +84,22 @@ export const authenticatedFetch = async (url, options = {}) => {
   }
 
   return response;
+};
+
+/**
+ * Gets the current user information from localStorage
+ * @returns {Object|null} User object with id or null if not authenticated
+ */
+export const getCurrentUser = () => {
+  const token = localStorage.getItem("token");
+  const userId = localStorage.getItem("user_id");
+  
+  if (!token || !isAuthenticated()) {
+    return null;
+  }
+  
+  return {
+    id: userId,
+    token: token
+  };
 };

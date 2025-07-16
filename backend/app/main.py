@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .core.database import Base, engine
-from .routers import auth, reports, templates, user_templates, custom_prompt
+from .routers import auth, reports, templates, user_templates, custom_prompt, study
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from .core.config import settings
@@ -12,7 +12,7 @@ from .core.database import get_db
 from dotenv import load_dotenv
 
 # Import all models to ensure SQLAlchemy can resolve relationships
-from .models import User, UserTemplate, Report
+from .models import User, UserTemplate, Report, StudySession
 
 # Load environment variables from .env file
 load_dotenv()
@@ -151,6 +151,7 @@ def create_app():
     app.include_router(templates.router, prefix="/templates", tags=["templates"])
     app.include_router(user_templates.router, prefix="/user-templates", tags=["user-templates"])
     app.include_router(custom_prompt.router, prefix="/custom-prompt", tags=["custom-prompt"])
+    app.include_router(study.router, prefix="/study", tags=["study"])
 
     logger.info("Application startup complete")
     return app

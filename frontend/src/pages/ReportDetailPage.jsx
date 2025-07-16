@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaSync, FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaSync, FaArrowLeft, FaEye, FaEyeSlash, FaCheckCircle } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { authenticatedFetch } from "../utils/auth";
 import ReportCard from "../components/ReportCard";
 import API_URL from "../utils/apiConfig";
 import * as diff from 'diff';
+import { useStudy } from "../context/StudyContext";
+import StudyTimerBar from "../components/StudyTimerBar";
 
 function ReportDetailPage() {
   const { reportId } = useParams();
@@ -15,6 +17,17 @@ function ReportDetailPage() {
   const [showDiff, setShowDiff] = useState(false);
   const [templateText, setTemplateText] = useState("");
   const navigate = useNavigate();
+  
+  const {
+    isStudyMode,
+    studySessionId,
+    studyTimerData,
+    setStudyTimerData,
+    generatedReportId,
+    firstGenerationTime,
+    editOperations,
+    originalGeneratedText,
+  } = useStudy();
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -113,8 +126,86 @@ function ReportDetailPage() {
     );
   }
 
+  // Handler für Study Session Abschluss
+  const handleFinalizeStudySession = async () => {
+    const confirmFinalize = window.confirm(
+      "Möchten Sie die Studiensitzung wirklich abschließen?"
+    );
+    
+    if (!confirmFinalize) return;
+    
+    try {
+      const endTime = new Date();
+      const totalDuration = Math.floor(
+        (endTime - new Date(studyTimerData.startTime)) / 1000
+      );
+      const editingDuration = firstGenerationTime
+        ? Math.floor((endTime - firstGenerationTime) / 1000)
+        : 0;
+
+      // Calculate word counts
+      const finalWordCount = report.report_text.trim().split(/\s+/).length;
+
+      const response = await authenticatedFetch(
+        `${API_URL}/study/study-session/${studySessionId}/complete`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            report_id: parseInt(reportId),
+            total_duration: totalDuration,
+            editing_duration: editingDuration,
+            pause_count: studyTimerData.pauseCount || 0,
+            total_pause_seconds: studyTimerData.totalPauseTime || 0,
+            edit_operations: editOperations,
+            input_words: report.input_word_count || 0,
+            generated_words: report.generated_word_count || 0,
+            final_words: finalWordCount,
+            template_used: report.template_id || null,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        toast.success("Studiensitzung erfolgreich abgeschlossen!");
+        navigate("/");
+      } else {
+        throw new Error("Fehler beim Abschließen der Studiensitzung");
+      }
+    } catch (error) {
+      console.error("Error completing study session:", error);
+      toast.error("Fehler beim Abschließen der Studiensitzung");
+    }
+  };
+
+
+  const handleStudySessionCancel = async () => {
+    const confirmCancel = window.confirm(
+      "Sind Sie sicher, dass Sie die Studiensitzung abbrechen möchten? Alle Timer-Daten gehen verloren."
+    );
+    
+    if (confirmCancel) {
+      toast.info("Studiensitzung abgebrochen.");
+      navigate("/");
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 text-white">
+    <>
+      {/* Study Timer Bar - appears at top when in study mode */}
+      {isStudyMode && studySessionId && (
+        <StudyTimerBar 
+          onSessionStart={() => {}}
+          studySessionId={studySessionId}
+          onTimerData={setStudyTimerData}
+          onCancel={handleStudySessionCancel}
+          initialTimerData={studyTimerData}
+        />
+      )}
+      
+      <div className={`max-w-5xl mx-auto px-4 py-8 text-white ${isStudyMode && studySessionId ? 'pt-20' : ''}`}>
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={handleGoBack}
@@ -123,15 +214,28 @@ function ReportDetailPage() {
           <FaArrowLeft />
           <span>Zurück zu den Berichten</span>
         </button>
-        {templateText && (
-          <button
-            onClick={() => setShowDiff(!showDiff)}
-            className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-          >
-            {showDiff ? <FaEyeSlash /> : <FaEye />}
-            <span>{showDiff ? "Differenz ausblenden" : "Differenz anzeigen"}</span>
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {templateText && (
+            <button
+              onClick={() => setShowDiff(!showDiff)}
+              className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
+            >
+              {showDiff ? <FaEyeSlash /> : <FaEye />}
+              <span>{showDiff ? "Differenz ausblenden" : "Differenz anzeigen"}</span>
+            </button>
+          )}
+          {/* Study Mode Finalize Button */}
+          {isStudyMode && studySessionId && (
+            <button
+              onClick={handleFinalizeStudySession}
+              className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors duration-200 font-medium"
+              title="Studie abschließen"
+            >
+              <FaCheckCircle />
+              <span>Studie abschließen</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <h2 className="text-3xl font-bold text-blue-400 mb-6">
@@ -179,6 +283,7 @@ function ReportDetailPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
 
