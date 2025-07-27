@@ -26,45 +26,45 @@ function RegisterPage() {
 
     // Username validation
     if (!username.trim()) {
-      newErrors.username = "Username is required";
+      newErrors.username = "Benutzername ist erforderlich";
     } else if (username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters long";
+      newErrors.username = "Benutzername muss mindestens 3 Zeichen lang sein";
     } else if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
       newErrors.username =
-        "Username can only contain letters, numbers, hyphens, and underscores";
+        "Benutzername darf nur Buchstaben, Zahlen, Bindestriche und Unterstriche enthalten";
     }
 
     // Email validation
     if (!email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "E-Mail ist erforderlich";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = "Bitte geben Sie eine gültige E-Mail-Adresse ein";
     }
 
     // Password validation
     if (!password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Passwort ist erforderlich";
     } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters long";
+      newErrors.password = "Passwort muss mindestens 6 Zeichen lang sein";
     }
 
     // Password confirmation validation
     if (!passwordConfirm) {
-      newErrors.passwordConfirm = "Please confirm your password";
+      newErrors.passwordConfirm = "Bitte bestätigen Sie Ihr Passwort";
     } else if (password !== passwordConfirm) {
-      newErrors.passwordConfirm = "Passwords do not match";
+      newErrors.passwordConfirm = "Passwörter stimmen nicht überein";
     }
 
     // Study participant validation
     if (isStudyParticipant) {
       if (!studyToken.trim()) {
-        newErrors.studyToken = "Study token is required for study participants";
+        newErrors.studyToken = "Studien-Token ist für Studienteilnehmer erforderlich";
       }
       if (!fullName.trim()) {
-        newErrors.fullName = "Full name is required for study participants";
+        newErrors.fullName = "Vollständiger Name ist für Studienteilnehmer erforderlich";
       }
       if (!experienceLevel) {
-        newErrors.experienceLevel = "Experience level is required for study participants";
+        newErrors.experienceLevel = "Erfahrungsstufe ist für Studienteilnehmer erforderlich";
       }
     }
 
@@ -109,7 +109,7 @@ function RegisterPage() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success("Registration successful! You can now log in.");
+        toast.success("Registrierung erfolgreich! Sie können sich jetzt anmelden.");
         navigate("/login");
       } else {
         // Handle specific error messages from the backend
@@ -128,13 +128,13 @@ function RegisterPage() {
             toast.error(data.detail);
           }
         } else {
-          toast.error("Registration failed. Please try again.");
+          toast.error("Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.");
         }
       }
     } catch (error) {
       console.error("Registration error:", error);
       toast.error(
-        "A network error occurred. Please check your connection and try again."
+        "Ein Netzwerkfehler ist aufgetreten. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut."
       );
     } finally {
       setIsLoading(false);
@@ -145,13 +145,13 @@ function RegisterPage() {
     <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full bg-gray-800 rounded-lg shadow-xl p-8">
         <h2 className="text-2xl font-bold text-white mb-6 text-center">
-          Register
+          Registrieren
         </h2>
 
         <form onSubmit={handleRegister} noValidate>
           <div className="mb-4">
             <label className="block text-gray-300 text-sm font-medium mb-2">
-              Username *
+              Benutzername *
             </label>
             <input
               type="text"
@@ -163,7 +163,7 @@ function RegisterPage() {
                   ? "border-red-500 focus:ring-red-500"
                   : "border-gray-600 focus:ring-blue-500"
               }`}
-              placeholder="Enter your username"
+              placeholder="Geben Sie Ihren Benutzernamen ein"
               disabled={isLoading}
             />
             {errors.username && (
@@ -173,7 +173,7 @@ function RegisterPage() {
 
           <div className="mb-4">
             <label className="block text-gray-300 text-sm font-medium mb-2">
-              Email *
+              E-Mail *
             </label>
             <input
               type="email"
@@ -185,7 +185,7 @@ function RegisterPage() {
                   ? "border-red-500 focus:ring-red-500"
                   : "border-gray-600 focus:ring-blue-500"
               }`}
-              placeholder="Enter your email address"
+              placeholder="Geben Sie Ihre E-Mail-Adresse ein"
               disabled={isLoading}
             />
             {errors.email && (
@@ -195,7 +195,7 @@ function RegisterPage() {
 
           <div className="mb-4">
             <label className="block text-gray-300 text-sm font-medium mb-2">
-              Password *
+              Passwort *
             </label>
             <input
               type="password"
@@ -207,7 +207,7 @@ function RegisterPage() {
                   ? "border-red-500 focus:ring-red-500"
                   : "border-gray-600 focus:ring-blue-500"
               }`}
-              placeholder="Enter your password (min. 6 characters)"
+              placeholder="Geben Sie Ihr Passwort ein (min. 6 Zeichen)"
               disabled={isLoading}
             />
             {errors.password && (
@@ -217,7 +217,7 @@ function RegisterPage() {
 
           <div className="mb-6">
             <label className="block text-gray-300 text-sm font-medium mb-2">
-              Confirm Password *
+              Passwort bestätigen *
             </label>
             <input
               type="password"
@@ -229,7 +229,7 @@ function RegisterPage() {
                   ? "border-red-500 focus:ring-red-500"
                   : "border-gray-600 focus:ring-blue-500"
               }`}
-              placeholder="Confirm your password"
+              placeholder="Bestätigen Sie Ihr Passwort"
               disabled={isLoading}
             />
             {errors.passwordConfirm && (
@@ -354,18 +354,18 @@ function RegisterPage() {
                 : "bg-blue-600 hover:bg-blue-700 text-white"
             }`}
           >
-            {isLoading ? "Registering..." : "Register"}
+            {isLoading ? "Registriere..." : "Registrieren"}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-gray-400">
-            Already have an account?{" "}
+            Haben Sie bereits ein Konto?{" "}
             <button
               onClick={() => navigate("/login")}
               className="text-blue-400 hover:text-blue-300 font-medium"
             >
-              Sign in here
+              Hier anmelden
             </button>
           </p>
         </div>

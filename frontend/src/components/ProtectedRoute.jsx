@@ -10,7 +10,7 @@ function ProtectedRoute({ children }) {
   useEffect(() => {
     // If the user isn't authenticated, show a message
     if (!authenticated) {
-      toast.error("Your session has expired. Please log in again.");
+      toast.error("Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.");
     }
   }, [authenticated]);
 

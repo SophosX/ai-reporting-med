@@ -63,7 +63,7 @@ function Navbar() {
 
   const handleLogout = () => {
     logout();
-    toast.success("Successfully logged out");
+    toast.success("Erfolgreich abgemeldet");
     navigate("/login");
   };
 
@@ -203,7 +203,7 @@ function Navbar() {
             ) : (
               <>
                 <NavLink to="/login" icon={FaHome} label="Anmelden" />
-                <NavLink to="/register" icon={FaPlus} label="Register" />
+                <NavLink to="/register" icon={FaPlus} label="Registrieren" />
               </>
             )}
           </div>

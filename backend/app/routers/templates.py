@@ -53,7 +53,7 @@ async def get_template(
     
     template = get_template_by_id(template_id, db=db, user_id=user_id)
     if not template:
-        return {"detail": "Template not found"}
+        return {"detail": "Vorlage nicht gefunden"}
     return template
 
 @router.put("/{template_id}")
@@ -70,7 +70,7 @@ async def update_template(
     ).first()
     
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
     
     # Update the template
     if template_data.title is not None:
@@ -94,7 +94,7 @@ async def update_template(
         }
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update template: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Fehler beim Aktualisieren der Vorlage: {str(e)}")
 
 @router.delete("/{template_id}")
 async def remove_template(
@@ -106,7 +106,7 @@ async def remove_template(
     # First check if the template exists for this user
     template = get_template_by_id(template_id, db=db, user_id=current_user_id)
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
     
     # Handle user-created custom templates (not overrides)
     if template.get("user_created", False) and not template.get("is_default_override", False):
@@ -116,12 +116,12 @@ async def remove_template(
         ).first()
         
         if not user_template:
-            raise HTTPException(status_code=404, detail="User template not found")
+            raise HTTPException(status_code=404, detail="Benutzervorlage nicht gefunden")
         
         db.delete(user_template)
         db.commit()
         
-        return {"detail": "Template successfully deleted"}
+        return {"detail": "Vorlage erfolgreich gelöscht"}
     
     # Handle default template overrides - delete the override to revert to default
     elif template.get("is_default_override", False):
@@ -136,9 +136,9 @@ async def remove_template(
             db.delete(user_override)
             db.commit()
             
-            return {"detail": "Template override deleted, reverted to default template"}
+            return {"detail": "Vorlagenüberschreibung gelöscht, auf Standardvorlage zurückgesetzt"}
         else:
-            raise HTTPException(status_code=404, detail="Template override not found")
+            raise HTTPException(status_code=404, detail="Vorlagenüberschreibung nicht gefunden")
     
     # Handle original default templates (no user overrides) - hide from user's view
     else:
@@ -152,7 +152,7 @@ async def remove_template(
         
         if existing_deleted_override:
             # Already hidden/deleted for this user
-            return {"detail": "Template already hidden from your view"}
+            return {"detail": "Vorlage ist bereits aus Ihrer Ansicht ausgeblendet"}
         
         # Create a "deleted" marker by creating an override with a special flag
         deleted_template_id = f"user-{current_user_id}-deleted-{template_id}"
@@ -170,10 +170,10 @@ async def remove_template(
             db.add(deleted_override)
             db.commit()
             
-            return {"detail": "Template hidden from your view"}
+            return {"detail": "Vorlage aus Ihrer Ansicht ausgeblendet"}
         except Exception as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail=f"Failed to hide template: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Fehler beim Ausblenden der Vorlage: {str(e)}")
 
 @router.post("/{template_id}/override")
 async def override_default_template(
@@ -186,7 +186,7 @@ async def override_default_template(
     # First check if the template exists
     template = get_template_by_id(template_id, db=db, user_id=current_user_id)
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
     
     # Check if this is already a user template
     if template.get("user_created", False):
@@ -197,7 +197,7 @@ async def override_default_template(
         # Otherwise raise an error
         raise HTTPException(
             status_code=400, 
-            detail="This is already a user template"
+            detail="Dies ist bereits eine Benutzervorlage"
         )
     
     # Check if an override already exists
@@ -248,4 +248,4 @@ async def override_default_template(
         }
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create template override: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Fehler beim Erstellen der Vorlagenüberschreibung: {str(e)}")

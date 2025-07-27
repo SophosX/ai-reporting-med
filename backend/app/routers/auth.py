@@ -16,7 +16,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     if existing_username:
         raise HTTPException(
             status_code=400, 
-            detail="Username already exists. Please choose a different username."
+            detail="Benutzername existiert bereits. Bitte wählen Sie einen anderen Benutzernamen."
         )
     
     # Check if email already exists
@@ -24,7 +24,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     if existing_email:
         raise HTTPException(
             status_code=400, 
-            detail="Email address is already registered. Please use a different email."
+            detail="E-Mail-Adresse ist bereits registriert. Bitte verwenden Sie eine andere E-Mail."
         )
 
     # Validate study token if provided
@@ -36,14 +36,14 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         if user_data.study_token not in VALID_STUDY_TOKENS:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid study token. Please check your invitation email for the correct token."
+                detail="Ungültiger Studien-Token. Bitte prüfen Sie Ihre Einladungs-E-Mail für den korrekten Token."
             )
         
         # If study token is valid, require full name and experience level
         if not user_data.full_name or not user_data.experience_level:
             raise HTTPException(
                 status_code=400,
-                detail="Full name and experience level are required for study participants."
+                detail="Vollständiger Name und Erfahrungsstufe sind für Studienteilnehmer erforderlich."
             )
         
         study_participant = True
@@ -78,7 +78,7 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
     print("user",user)
 
     if not user or not verify_password(login_data.password, user.password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Ungültige Anmeldedaten")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

@@ -77,7 +77,7 @@ async def create_template(
         if attempt >= max_attempts:
             raise HTTPException(
                 status_code=400, 
-                detail="Unable to generate unique template ID after multiple attempts. Please try again."
+                detail="Eindeutige Vorlagen-ID konnte nach mehreren Versuchen nicht generiert werden. Bitte versuchen Sie es erneut."
             )
     else:
         # For manual creation, check if template_id already exists
@@ -85,7 +85,7 @@ async def create_template(
         if existing:
             raise HTTPException(
                 status_code=400, 
-                detail="Template ID already exists. Please choose a different template ID or title."
+                detail="Vorlagen-ID existiert bereits. Bitte wählen Sie eine andere Vorlagen-ID oder einen anderen Titel."
             )
     
     try:
@@ -103,10 +103,10 @@ async def create_template(
         return new_template
     except IntegrityError as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Error creating template. Template ID may already exist.")
+        raise HTTPException(status_code=400, detail="Fehler beim Erstellen der Vorlage. Vorlagen-ID existiert möglicherweise bereits.")
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unerwarteter Fehler: {str(e)}")
 
 @router.get("/", response_model=List[UserTemplateOut])
 async def get_user_templates(
@@ -130,7 +130,7 @@ async def get_template(
     ).first()
     
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found or not authorized")
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden oder nicht autorisiert")
     
     return template
 
@@ -148,7 +148,7 @@ async def update_template(
     ).first()
     
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found or not authorized")
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden oder nicht autorisiert")
     
     if template_data.title is not None:
         template.title = template_data.title
@@ -174,7 +174,7 @@ async def delete_template(
     ).first()
     
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found or not authorized")
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden oder nicht autorisiert")
     
     db.delete(template)
     db.commit()

@@ -93,7 +93,7 @@ async def get_report(
 ):
     report = db.query(Report).filter(Report.id == report_id, Report.user_id == current_user_id).first()
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found or not authorized")
+        raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
     return report
 
 
@@ -105,7 +105,7 @@ async def delete_report(
 ):
     report = db.query(Report).filter(Report.id == report_id, Report.user_id == current_user_id).first()
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found or not authorized")
+        raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
 
     db.delete(report)
     db.commit()
@@ -121,7 +121,7 @@ async def get_report_pdf(
     # Get the report
     report = db.query(Report).filter(Report.id == report_id, Report.user_id == current_user_id).first()
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found or not authorized")
+        raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
     
     # Get user information for the report
     user = db.query(User).filter(User.id == current_user_id).first()
@@ -161,7 +161,7 @@ async def update_report(
     # Get the existing report
     report = db.query(Report).filter(Report.id == report_id, Report.user_id == current_user_id).first()
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found or not authorized")
+        raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
 
     # Store the old report text to calculate what was added
     old_report_text = report.report_text
@@ -344,7 +344,7 @@ async def get_reports_timeline(
         }
     
     else:
-        raise HTTPException(status_code=400, detail="Invalid period. Use 'days', 'weeks', or 'months'")
+        raise HTTPException(status_code=400, detail="Ungültiger Zeitraum. Verwenden Sie 'days', 'weeks' oder 'months'")
 
 
 @router.get("/stats/word-counts", response_model=dict)

@@ -167,7 +167,7 @@ function LoginPage() {
             toast.error(data.detail);
           }
         } else {
-          toast.error("Registration failed. Please try again.");
+          toast.error("Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.");
         }
       }
     } catch (error) {

@@ -111,7 +111,7 @@ function HomePage() {
   // Format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("de-DE", {
       year: "numeric",
       month: "short",
       day: "numeric",

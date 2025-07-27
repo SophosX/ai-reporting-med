@@ -15,7 +15,7 @@ async def get_custom_prompt(
     """Get the current user's custom prompt"""
     user = db.query(User).filter(User.id == current_user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
     
     return CustomPromptOut(custom_prompt=user.custom_prompt)
 
@@ -28,7 +28,7 @@ async def create_custom_prompt(
     """Create or update the current user's custom prompt"""
     user = db.query(User).filter(User.id == current_user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
     
     user.custom_prompt = prompt_data.custom_prompt
     db.commit()
@@ -45,7 +45,7 @@ async def update_custom_prompt(
     """Update the current user's custom prompt"""
     user = db.query(User).filter(User.id == current_user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
     
     user.custom_prompt = prompt_data.custom_prompt
     db.commit()
@@ -61,9 +61,9 @@ async def delete_custom_prompt(
     """Delete the current user's custom prompt"""
     user = db.query(User).filter(User.id == current_user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
     
     user.custom_prompt = None
     db.commit()
     
-    return {"message": "Custom prompt deleted successfully"} 
+    return {"message": "Benutzerdefinierter Prompt erfolgreich gelöscht"} 

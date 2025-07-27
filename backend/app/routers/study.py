@@ -18,7 +18,7 @@ async def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail="Nicht authentifiziert")
     
     token = authorization.split(" ")[1]
     
@@ -26,13 +26,13 @@ async def get_current_user(
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: int = int(payload.get("sub"))
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(status_code=401, detail="Ungültiges Token")
     except (JWTError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid token")
     
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
     
     return user
 
@@ -46,7 +46,7 @@ async def toggle_study_mode(
     if not current_user.study_participant:
         raise HTTPException(
             status_code=403,
-            detail="Only study participants can toggle study mode"
+            detail="Nur Studienteilnehmer können den Studienmodus umschalten"
         )
     
     current_user.study_mode_active = toggle_data.study_mode_active
@@ -83,7 +83,7 @@ async def start_study_session(
     if not current_user.study_mode_active:
         raise HTTPException(
             status_code=403,
-            detail="Study mode must be active to start a study session."
+            detail="Der Studienmodus muss aktiv sein, um eine Studiensitzung zu starten."
         )
     
     # Convert template_id to int if it's a string
@@ -124,7 +124,7 @@ async def start_timer(
     ).first()
     
     if not session:
-        raise HTTPException(status_code=404, detail="Study session not found")
+        raise HTTPException(status_code=404, detail="Studiensitzung nicht gefunden")
     
     session.timer_start = datetime.utcnow()
     db.commit()
@@ -145,7 +145,7 @@ async def complete_study_session(
     ).first()
     
     if not session:
-        raise HTTPException(status_code=404, detail="Study session not found")
+        raise HTTPException(status_code=404, detail="Studiensitzung nicht gefunden")
     
     # Update report_id if provided
     if data.get("report_id"):
@@ -191,7 +191,7 @@ async def export_user_study_data(
     if not current_user.study_participant:
         raise HTTPException(
             status_code=403,
-            detail="Only study participants can export their data"
+            detail="Nur Studienteilnehmer können ihre Daten exportieren"
         )
     
     # Import Report model here to avoid circular imports
@@ -232,7 +232,7 @@ async def export_all_study_data(
     if current_user.username != "admin":  # Simple admin check - improve this in production
         raise HTTPException(
             status_code=403,
-            detail="Only administrators can export all study data"
+            detail="Nur Administratoren können alle Studiendaten exportieren"
         )
     
     # Import Report model here to avoid circular imports

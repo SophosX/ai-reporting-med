@@ -33,6 +33,119 @@ radiologyTemplates = [
         "id": "mrt-schulter",
         "title": "MRT Schulter",
         "text": """Regelrechte Artikulation des Glenohumeralgelenks. Normal konfigurierter Oberarmkopf. Regelrecht konfigurierte Pfanne. Glatte Gelenkflächen bei normal breiter Kortikalis. Regelrecht weiter Gelenkspalt. Homogenes, fettäquivalentes Knochenmarksignal. Labrum glenoidale allseits intakt. Normale Konfiguration des Akromioklavikulargelenks. Keine Gelenkhypertrophie. Subakromiales Fettgewebe erhalten. Regelrechte Darstellung der Rotatorenmanschette. M. supraspinatus mit normaler Lage, Breite, Signalgebung und normalem Muskel-Sehnen-Übergang. Intakte Bizepssehne mit regelrechtem Verlauf im Canalis bicipitis. Unauffällige Darstellung der das Schultergelenk deckenden Muskulatur. Unauffällige Darstellung der mitabgebildeten Lungenabschnitte. Unauffällige Darstellung der mitabgebildeten Weichteile."""
+    },
+    {
+        "id": "CTBABDOMEN",
+        "title": "Normalbefund Abdomen Lang",
+        "text": """Regelrechte Darstellung der Leber ohne Nachweis fokaler Parenchymläsionen. Regelrechte Kontrastierung der venösen und portalvenösen Gefäße. Arterieller Normalversorgungstyp. Keine intra- oder extrahepatische Cholestase. Unauffällige Gallenblase. Regelrechte Darstellung der Milz, des Pancreas sowie der Nebennieren.
+
+Regelrechte Darstellung der Nieren, kein Harnstau. Harnblase unauffällig.///// Einzelne unkomplizierte Nierenzysten beidseits, sonst regelrechte Darstellung der Nieren, kein Harnstau.
+
+Regelrechte Kontrastierung der Darmwände von Dünn- und Dickdarm. Keine Passagestörung. Regelrechte Darstellung der Organe im kleinen Becken.
+Keine freie intraabdominale Flüssigkeit. Keine freie Luft. Keine abdominelle Lymphadenopathie.
+
+WENN NUR VENÖS: Soweit in der aktuellen Phase abgrenzbar regelrechte Kontrastierung der abgebildeten Gefäßabschnitte.
+
+WENN ARTERIELL: Insgesamt regelrechte Kontrastierung der Aorta abdominalis sowie der viszeralen Gefäßabgänge. Kein Nachweis eines embolischen Gefäßverschlusses oder einer aktiven Blutung."""
+    },
+    {
+        "id": "CTBABKURZ",
+        "title": "Normalbefund Abdomen Kurz",
+        "text": """Unauffällige Darstellung der parenchymatösen Oberbauchorgane. Keine Cholestase. Unauffällige Darstellung des Darms, keine Zeichen einer Passagestörung.
+Keine freie intraabdominale Flüssigkeit, keine freie Luft. Keine abdominelle Lymphadenopathie."""
+    },
+    {
+        "id": "CTBASBEST",
+        "title": "Normalbefund Asbest",
+        "text": """Es liegen mehrere Voruntersuchungen zum Vergleich vor, zuletzt vom
+
+Atemartefakte.
+Tracheobronchialsystem frei durchgängig. Regelrechte Belüftung beider Lungenflügel. Keine pneumonischen Infiltrate. Kein Pleuraerguss. Kein Pneumothorax. Keine malignomsuspekten intrapulmonalen Rundherde. Keine Pleuraplaques.
+
+Normgroßes Herz ohne Dekompensationszeichen. Kein Perikarderguss.
+Thorax symmetrisch, Mediastinum mittelständig und nicht verbreitert. Schilddrüse unauffällig.
+Keine thorakale Lymphadenopathie.
+
+Partiell miterfasste Oberbauchorgane in nativer Low-Dose-Technik unauffällig.
+Gering degenerative Wirbelsäulenveränderungen, keine Fraktur."""
+    },
+    {
+        "id": "CTBCCT",
+        "title": "Normalbefund CCT",
+        "text": """Regelrechte kortikomedulläre Differenzierung sowie Abgrenzbarkeit der Stammganglien. Mittelständiger Interhemisphärenspalt. Basale Zisternen abgrenzbar. Regelrechte Darstellung der inneren und äußeren Liquorräume.
+
+Regelrechte Darstellung der abgebildeten pneumatisierten Räume. Knöcherne Strukturen unauffällig."""
+    },
+    {
+        "id": "CTBHALS",
+        "title": "Normalbefund Hals CT",
+        "text": """Partiell eingeschränkte Beurteilbarkeit bei Aufhärtungsartefakten durch Zahnersatzmaterial.
+
+Regelrechte, symmetrische Darstellung der Halsweichteile ohne Nachweis einer umschriebenen Raumforderung. Keine zervikale Lymphadenopathie.
+Normal große Schilddrüse. Regelrechte Kontrastierung der Halsgefäße.
+Freie Belüftung der partiell miterfassten Nasennebenhöhlen."""
+    },
+    {
+        "id": "CTBLAE",
+        "title": "Normalbefund LAE",
+        "text": """Thorax:
+Regelrechte Kontrastierung der Lungenarterien ohne Nachweis eines Embolus. Keine Rechtsherzbelastungszeichen. Ebenso regelrechte Kontrastierung der Aorta thorakalis und ihrer supraaortalen Gefäßabgänge ohne Nachweis eines Aneurysma oder einer Gefäßdissektion.
+Normale Herzgröße ohne Dekompensationszeichen, kein Perikarderguss.
+Regelrechte Belüftung beider Lungenflügel ohne Infiltrate. Keine Pleuraergüsse.
+Kein Pneumothorax. Keine intrapulmonalen Rundherde. Keine thorakale Lymphadenopathie.
+
+Unauffällige Darstellung der mitabgebildeten Oberbauchorgane.
+Gering degenerative Wirbelsäulenveränderungen, keine Fraktur.
+
+CT-Phlebographie:
+Regelrechte Kontrastierung der Becken- und tiefen Oberschenkelvenen ohne Nachweis einer Thrombose. Unauffällige mitabgebildete Beckenorgane. Keine freie Flüssigkeit, keine freie Luft.
+
+Sigmadivertikulose und Sigma elongatum. Degenerative Veränderungen der LWS."""
+    },
+    {
+        "id": "CTBNNH",
+        "title": "Normalbefund Nasennebenhöhlen CT",
+        "text": """Nasennebenhöhlen regelrecht geformt, normal pneumatisiert und nicht verlegt. Knöcherne Begrenzung allseits glatt und scharf abgrenzbar. Keine Schleimhautschwellung, keine Flüssigkeitsspiegel, somit kein Anhalt für eine Sinusitis. Unauffällige Nasenhaupthöhle mit mittelständigem Septum. Keine röntgendichten Fremdkörper."""
+    },
+    {
+        "id": "CTBSTEIN",
+        "title": "Normalbefund Steinsuche",
+        "text": """Kein Nachweis eines röntgendichten Konkrements in den ableitenden Harnwegen beidseits. Kein Harnstau. Soweit in Low-Dose-Technik beurteilbar unauffällige Darstellung beider Nieren sowie der übrigen miterfassten parenchymatösen Oberbauchorgane.
+Regelrechte Darstellung des Darmes ohne Hinweis auf eine Passagestörung.
+Keine freie abdominelle Flüssigkeit und Luft.
+Unauffällige knöcherne Strukturen."""
+    },
+    {
+        "id": "CTBT",
+        "title": "Normalbefund Thorax",
+        "text": """Beidseits regelrecht belüftete Lungenflügel, keine relevanten Belüftungsstörungen. Keine pneumonischen Infiltrate. Kein Pleuraerguss. Kein Pneumothorax.
+Keine malignomsuspekten intrapulmonalen Rundherde.
+Normgroßes Herz. Kein Perikarderguss.
+Regelrechte Darstellung der großen intrathorakalen Gefäße.
+Keine thorakale Lymphadenopathie.
+Unauffällige Darstellung der miterfassten Oberbauchorgane."""
+    },
+    {
+        "id": "CTBTAVI",
+        "title": "CT TAVI Befund ohne Messung",
+        "text": """Kalzium-Scoring:
+Nachweis von geringen/moderaten/hochgradigen Koronarkarzifikationen mit einem Agatston-Score von xxx,xx (Volumen xxx,xx mm³). Vitientypische Aortenklappentaschenverkalkungen mit einem modifizierten Agatston-Score von xxx,xx (Volumen xxx,xx mm³).
+
+Herz und Gefäße:
+Biatrial betonte Kardiomegalie ohne Zeichen der kardialen Dekompensation. Kein Perikarderguss. Vitientypische Aortenklappentaschenkalzifikationen. Koronarsklerose. Moderate kalzifizierte Plaques des Aortenbogens sowie der supraaortalen Gefäßabgänge. Abgangsnahe kalzifizierte Plaques des Truncus coeliacus, der A. mesenterica superior und der Nierenarterien beidseits. Moderate bis ausgeprägte, kalzifizierende Vasosklerose der infrarenalen Aorta abdominalis. Moderate kalzifizierende Vasosklerose der A. iliaca communis beidseits sowie der A. iliaca interna beidseits und der A. femoralis communis beidseits. Elongation der Beckengefäße.
+
+Thorax:
+Frei durchgängiges Tracheobronchialsystem. Regelrechte Belüftung beider Lungenflügel. Keine pneumonischen Infiltrate. Kein Pleuraerguss. Kein Pneumothorax. Keine malignomsuspekten intrapulmonalen Rundherde.
+Keine pathologisch vergrößerten Lymphknoten intrathorakal oder beidseits axillär.
+
+Abdomen:
+Soweit in der arteriellen Kontrastmittelphase beurteilbar weitgehend unauffällige Darstellung der parenchymatösen Oberbauchorgane. Keine freie Luft oder Flüssigkeit. Unauffällige Darstellung der Organe im kleinen Becken.
+
+Skelett:
+Gering ausgeprägte, degenerative Wirbelsäulenveränderungen. Keine frische Fraktur. Keine malignomsuspekten ossären Läsionen.
+
+Beurteilung:
+Vitientypische Aortenklappenverkalkungen. Freier, transfemoraler, arterieller Zugangsweg vor TAVI."""
     }
 ]
 

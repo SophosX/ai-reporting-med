@@ -444,7 +444,7 @@ function NewReportPage() {
 
     if (userTemplates.length > 0) {
       options.push({
-        label: "Meine Templates",
+        label: "Meine Vorlagen",
         options: userTemplates.map((tpl) => ({
           value: tpl.id,
           label: tpl.title,
@@ -604,7 +604,7 @@ function NewReportPage() {
               {templatesLoading ? (
                 <div className="flex items-center space-x-2 text-gray-400 h-[42px]">
                   <FaCircleNotch className="animate-spin" />
-                  <span>Lade Templates...</span>
+                  <span>Lade Vorlagen...</span>
                 </div>
               ) : (
                 <Select
@@ -631,7 +631,7 @@ function NewReportPage() {
                   isDisabled={templatesLoading}
                   placeholder="-- ohne Vorlage --"
                   styles={customSelectStyles}
-                  noOptionsMessage={() => "Keine Templates gefunden"}
+                  noOptionsMessage={() => "Keine Vorlagen gefunden"}
                   menuPlacement="top"
                 />
               )}
@@ -646,7 +646,7 @@ function NewReportPage() {
               {isGenerating ? (
                 <>
                   <FaCircleNotch className="animate-spin" />
-                  <span>Generating...</span>
+                  <span>Generiere...</span>
                 </>
               ) : (
                 <>
