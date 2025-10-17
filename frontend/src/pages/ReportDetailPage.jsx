@@ -45,15 +45,10 @@ function ReportDetailPage() {
         const data = await response.json();
         setReport(data);
 
-        // If the report has a template, fetch it
-        if (data.template_id) {
-          const templateResponse = await authenticatedFetch(
-            `${API_URL}/templates/${data.template_id}`
-          );
-          if (templateResponse.ok) {
-            const templateData = await templateResponse.json();
-            setTemplateText(templateData.text);
-          }
+        // Use the template_text stored with the report (from when it was generated)
+        // This ensures we compare against the exact template version used for generation
+        if (data.template_text) {
+          setTemplateText(data.template_text);
         }
       } catch (err) {
         console.error("Error fetching report:", err);
@@ -80,7 +75,16 @@ function ReportDetailPage() {
   const renderDiff = (text1, text2) => {
     if (!text1 || !text2) return null;
 
-    const differences = diff.diffWords(text1, text2);
+    // Normalize whitespace to avoid false differences
+    // But keep the original text for display
+    const normalizeWhitespace = (text) => text.replace(/\s+/g, ' ').trim();
+
+    // Use the normalized texts for comparison
+    const differences = diff.diffWords(
+      normalizeWhitespace(text1),
+      normalizeWhitespace(text2)
+    );
+
     return differences.map((part, index) => {
       let className = "";
       if (part.added) {
