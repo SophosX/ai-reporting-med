@@ -15,7 +15,6 @@ import rehypeSanitize from "rehype-sanitize";
 import { Link, useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
-import * as diff from "diff";
 import WordCountMetrics from "./WordCountMetrics";
 
 /**
@@ -35,33 +34,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   const [editedInputText, setEditedInputText] = useState(
     report?.input_text || ""
   );
-  const [templateText, setTemplateText] = useState("");
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Fetch template text if report has a template
-    const fetchTemplate = async () => {
-      console.log("Report template_id:", report?.template_id); // Debug
-      if (report?.template_id) {
-        try {
-          const response = await authenticatedFetch(
-            `${API_URL}/templates/${report.template_id}`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            console.log("Template data:", data); // Debug
-            setTemplateText(data.text);
-          } else {
-            console.error("Failed to fetch template:", response.status); // Debug
-          }
-        } catch (err) {
-          console.error("Error fetching template:", err);
-        }
-      }
-    };
-
-    fetchTemplate();
-  }, [report?.template_id]);
 
   // Update local state when report prop changes
   useEffect(() => {
@@ -255,35 +228,6 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
     setEditedInputText(report.input_text);
   };
 
-  const renderDiff = (text1, text2) => {
-    console.log("Template text:", text1); // Debug
-    console.log("Report text:", text2); // Debug
-
-    if (!text1 || !text2) {
-      console.log("Missing text:", { text1: !!text1, text2: !!text2 }); // Debug
-      return null;
-    }
-
-    const differences = diff.diffWords(text1, text2);
-    console.log("Differences:", differences); // Debug
-
-    return differences.map((part, index) => {
-      let className = "";
-      if (part.added) {
-        className = "bg-green-500/20 text-green-300";
-      } else if (part.removed) {
-        className = "bg-red-500/20 text-red-300 line-through";
-      } else if (part.value.trim() !== "") {
-        className = "text-gray-300";
-      }
-      return (
-        <span key={index} className={className}>
-          {part.value}
-        </span>
-      );
-    });
-  };
-
   if (!report) {
     return (
       <div className="bg-gray-800 rounded-xl p-6 text-white">
@@ -439,34 +383,6 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
             </div>
           )}
         </div>
-
-        {/* Diff View */}
-        {report.template_text && (
-          <div className="mt-6 pt-6 border-t border-gray-700/50">
-            <h4 className="text-lg font-semibold text-purple-400 mb-4">
-              Vergleich mit Template
-            </h4>
-            <div className="bg-gray-900/50 rounded-lg p-4">
-              <div className="prose prose-invert max-w-none">
-                {renderDiff(report.template_text, report.report_text)}
-              </div>
-            </div>
-            <div className="mt-4 flex items-center space-x-4 text-sm text-gray-400">
-              <div className="flex items-center">
-                <span className="w-3 h-3 bg-green-500/20 rounded-full mr-2"></span>
-                <span>Hinzugefügt</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-3 h-3 bg-red-500/20 rounded-full mr-2"></span>
-                <span>Entfernt</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-3 h-3 bg-gray-500/20 rounded-full mr-2"></span>
-                <span>Unverändert</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
