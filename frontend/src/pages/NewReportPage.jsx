@@ -100,16 +100,14 @@ function NewReportPage() {
     loadUserCustomPrompt();
   }, []);
 
-  // Show study modal when in study mode
+  // Handle study mode changes
   useEffect(() => {
-    if (isStudyMode && !studySessionId && !showStudyTimer && !showStudyModal) {
-      setShowStudyModal(true);
-    } else if (!isStudyMode) {
+    if (!isStudyMode) {
       // If study mode is turned off, hide modal and timer
       setShowStudyModal(false);
       setShowStudyTimer(false);
     }
-  }, [isStudyMode, studySessionId, showStudyTimer, showStudyModal]);
+  }, [isStudyMode]);
 
   // Initialize prompt with user's custom prompt or default
   useEffect(() => {
@@ -160,6 +158,12 @@ function NewReportPage() {
 
   const handleStudyTimerStart = async (timerData) => {
     try {
+      // Ensure we have a template selected
+      if (!selectedTemplateId) {
+        toast.error("Bitte wählen Sie zuerst eine Vorlage aus");
+        return;
+      }
+      
       const sessionId = await startStudySession(selectedTemplateId);
       setStudyTimerData(timerData);
       setShowStudyModal(false);
@@ -173,8 +177,8 @@ function NewReportPage() {
 
   const handleStudyTimerCancel = () => {
     setShowStudyModal(false);
-    setIsStudyMode(false);
-    navigate("/");
+    // Don't turn off study mode, just close the modal
+    // User can select another template if they want
   };
 
   const handleStudySessionCancel = async () => {
@@ -489,10 +493,16 @@ function NewReportPage() {
       
       <div className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white ${isStudyMode && showStudyTimer ? 'pt-20' : ''}`}>
         <div className="glass-effect rounded-xl shadow-lg p-8 hover-lift">
-        <div className="flex items-center space-x-3 mb-6">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-blue-400">
             Medizinischen Bericht erstellen
           </h1>
+          {isStudyMode && !showStudyTimer && (
+            <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+              <FaFlask className="text-yellow-400" />
+              <span className="text-sm text-yellow-400">Studienmodus aktiv - Wählen Sie eine Vorlage um zu starten</span>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSaveReport} className="space-y-6">
@@ -583,7 +593,7 @@ function NewReportPage() {
               {selectedTemplateId && (
                 <p className="text-xs text-gray-400 mt-2">
                   Sie verwenden die Vorlage:{" "}
-                  <span className="font-medium text-blue-400">
+                  <span className="font-medium text-gray-200">
                     {templates.find((t) => t.id === selectedTemplateId)
                       ?.title || "Unbekannte Vorlage"}
                   </span>
@@ -621,9 +631,13 @@ function NewReportPage() {
                       : null
                   }
                   onChange={(selectedOption) => {
-                    setSelectedTemplateId(
-                      selectedOption ? selectedOption.value : ""
-                    );
+                    const newTemplateId = selectedOption ? selectedOption.value : "";
+                    setSelectedTemplateId(newTemplateId);
+                    
+                    // Show study modal when template is selected in study mode
+                    if (isStudyMode && newTemplateId && !studySessionId && !showStudyTimer) {
+                      setShowStudyModal(true);
+                    }
                   }}
                   options={getGroupedOptions()}
                   isSearchable
