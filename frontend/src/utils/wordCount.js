@@ -76,10 +76,10 @@ export const getWordCountDescriptions = (metrics) => {
       : `${Math.abs(metrics.editDelta)} Wörter entfernt`;
 
   return {
-    savedWordsText: `Sie haben ${metrics.savedWords} Wörter in diesem Bericht gespart`,
+    savedWordsText: `Ihr finaler Bericht hat ${metrics.savedWords} Wörter mehr als Ihre Eingabe`,
     editDeltaText: `Sie haben ${editDescription.toLowerCase()} von der KI-Ausgabe`,
     efficiencyText: `${metrics.efficiency}% Effizienz vs. manuelles Tippen`,
-    initialSavingsText: `KI hat Ihnen anfangs ${metrics.savedWordsInitial} Wörter gespart`,
+    initialSavingsText: `Die KI hat aus Ihrer Eingabe ${metrics.savedWordsInitial} zusätzliche Wörter generiert`,
   };
 };
 

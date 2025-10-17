@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaSync, FaArrowLeft, FaEye, FaEyeSlash, FaCheckCircle } from "react-icons/fa";
+import { FaSync, FaArrowLeft, FaCheckCircle } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { authenticatedFetch } from "../utils/auth";
 import ReportCard from "../components/ReportCard";
@@ -14,7 +14,6 @@ function ReportDetailPage() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showDiff, setShowDiff] = useState(false);
   const [templateText, setTemplateText] = useState("");
   const navigate = useNavigate();
   
@@ -215,15 +214,6 @@ function ReportDetailPage() {
           <span>Zurück zu den Berichten</span>
         </button>
         <div className="flex items-center gap-4">
-          {templateText && (
-            <button
-              onClick={() => setShowDiff(!showDiff)}
-              className="flex items-center space-x-2 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors duration-200"
-            >
-              {showDiff ? <FaEyeSlash /> : <FaEye />}
-              <span>{showDiff ? "Differenz ausblenden" : "Differenz anzeigen"}</span>
-            </button>
-          )}
           {/* Study Mode Finalize Button */}
           {isStudyMode && studySessionId && (
             <button
@@ -249,8 +239,8 @@ function ReportDetailPage() {
             isDetailView={true}
             onUpdate={handleReportUpdate}
           />
-          
-          {showDiff && templateText && (
+
+          {templateText && (
             <div className="bg-gray-800 rounded-xl p-6 border border-purple-500/40">
               <h3 className="text-xl font-semibold text-purple-300 mb-4">
                 Vergleich mit Template
