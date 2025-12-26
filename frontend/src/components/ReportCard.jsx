@@ -287,15 +287,44 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
         </div>
       </div>
 
-      {/* Word Count Metrics */}
-      <div className="mb-6">
-        <WordCountMetrics
-          report={report}
-          showLabels={true}
-          compact={false}
-          showDescriptions={isDetailView}
-        />
-      </div>
+      {/* Study Session Info */}
+      {(report.case_id || report.study_duration_seconds !== null) && (
+        <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium text-purple-300">Studiensitzung</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {report.case_id && (
+              <div>
+                <div className="text-xs text-gray-400 mb-1">Fall-ID</div>
+                <div className="text-sm font-mono text-purple-200 bg-purple-900/20 px-2 py-1 rounded">
+                  {report.case_id}
+                </div>
+              </div>
+            )}
+            {report.study_duration_seconds !== null && (
+              <div>
+                <div className="text-xs text-gray-400 mb-1">Dauer</div>
+                <div className="text-sm font-mono text-purple-200 bg-purple-900/20 px-2 py-1 rounded">
+                  {Math.floor(report.study_duration_seconds / 60)}:{(report.study_duration_seconds % 60).toString().padStart(2, '0')} min
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Word Count Metrics - Only show for AI-generated reports */}
+      {!report.is_manual && (
+        <div className="mb-6">
+          <WordCountMetrics
+            report={report}
+            showLabels={true}
+            compact={false}
+            showDescriptions={isDetailView}
+          />
+        </div>
+      )}
 
       {/* Input Text Section */}
       <div className="bg-gray-800/50 rounded-lg p-4 mb-4">

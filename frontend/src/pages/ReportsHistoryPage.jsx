@@ -211,13 +211,33 @@ function ReportsHistoryPage() {
                         <FaChevronDown className="text-gray-400 text-sm" />
                       </div>
 
-                      <div className="mb-3">
+                      <div className="mb-3 flex items-center gap-4">
                         <div>
                           <span className="text-sm font-medium text-gray-300">
                             {date}
                           </span>
                           <div className="text-xs text-gray-500">{time}</div>
                         </div>
+
+                        {/* Study Session Info - Compact */}
+                        {(report.case_id || report.study_duration_seconds !== null) && (
+                          <div className="flex items-center gap-3 px-3 py-1 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                            {report.case_id && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-gray-400">Fall:</span>
+                                <span className="text-xs font-mono text-purple-300">{report.case_id}</span>
+                              </div>
+                            )}
+                            {report.study_duration_seconds !== null && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-gray-400">Dauer:</span>
+                                <span className="text-xs font-mono text-purple-300">
+                                  {Math.floor(report.study_duration_seconds / 60)}:{(report.study_duration_seconds % 60).toString().padStart(2, '0')} min
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Word Count Metrics - Compact View */}

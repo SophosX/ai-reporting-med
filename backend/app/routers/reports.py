@@ -4,7 +4,7 @@ from sqlalchemy import func, extract
 from typing import List, Optional
 from ..core.database import get_db
 from ..models.report_model import Report
-from ..schemas.report_schemas import ReportCreate, ReportOut, ReportUpdate
+from ..schemas.report_schemas import ReportCreate, ReportOut, ReportUpdate, ManualReportCreate
 from ..services.openai_service import get_completion
 from ..services.word_count_service import update_report_word_metrics, count_words
 from ..core.security import get_current_user_id
@@ -43,7 +43,8 @@ async def create_report(
         input_text=report_data.input_text,
         report_text=generated_text,
         template_id=report_data.template_id,
-        template_text=template_text
+        template_text=template_text,
+        case_id=report_data.case_id  # Store case_id for study tracking
     )
     
     # Calculate and store word metrics
@@ -54,6 +55,46 @@ async def create_report(
     db.add(new_report)
     db.commit()
     db.refresh(new_report)
+    return new_report
+
+
+@router.post("/manual", response_model=ReportOut)
+async def create_manual_report(
+        report_data: ManualReportCreate,
+        db: Session = Depends(get_db),
+        current_user_id: int = Depends(get_current_user_id)
+):
+    """Create a manually written report (without AI) for study comparison"""
+    # Get template text if template_id is provided
+    template_text = None
+    if report_data.template_id:
+        template = get_template_by_id(report_data.template_id, db=db, user_id=current_user_id)
+        if template:
+            template_text = template.get("text")
+
+    # Create new manual report
+    new_report = Report(
+        user_id=current_user_id,
+        input_text="",  # No input for manual reports
+        report_text=report_data.report_text,
+        template_id=report_data.template_id,
+        template_text=template_text,
+        is_manual=True,  # Mark as manually written
+        case_id=report_data.case_id  # Store case_id for study tracking
+    )
+
+    # Calculate word metrics for manual report
+    total_word_count = count_words(report_data.report_text)
+    new_report.total_words = total_word_count
+    new_report.input_words = 0  # No AI input for manual reports
+    new_report.generated_words = 0  # No AI generation
+    new_report.saved_words = 0  # No words saved since it's manual
+
+    # Save to database
+    db.add(new_report)
+    db.commit()
+    db.refresh(new_report)
+
     return new_report
 
 

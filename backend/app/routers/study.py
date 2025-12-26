@@ -72,6 +72,8 @@ async def get_study_mode_status(
 
 class StudySessionStart(BaseModel):
     template_id: Optional[Union[int, str]] = None
+    case_id: Optional[str] = None
+    session_type: Optional[str] = "with_ai"  # 'with_ai' or 'without_ai'
 
 @router.post("/study-session/start")
 async def start_study_session(
@@ -79,13 +81,13 @@ async def start_study_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Start a new study session for a report"""
+    """Start a new study session for a report (with or without AI)"""
     if not current_user.study_mode_active:
         raise HTTPException(
             status_code=403,
             detail="Der Studienmodus muss aktiv sein, um eine Studiensitzung zu starten."
         )
-    
+
     # Convert template_id to int if it's a string
     template_id_int = None
     if data.template_id:
@@ -94,21 +96,25 @@ async def start_study_session(
         except (ValueError, TypeError):
             # If it's not a valid number, just leave it as None
             template_id_int = None
-    
+
     # Create new study session
     study_session = StudySession(
         user_id=current_user.id,
         report_id=None,  # Will be set later when report is created
-        session_start=datetime.utcnow()
+        session_start=datetime.utcnow(),
+        case_id=data.case_id,
+        session_type=data.session_type or "with_ai"
     )
-    
+
     db.add(study_session)
     db.commit()
     db.refresh(study_session)
-    
+
     return {
         "session_id": study_session.id,
-        "session_start": study_session.session_start
+        "session_start": study_session.session_start,
+        "case_id": study_session.case_id,
+        "session_type": study_session.session_type
     }
 
 @router.post("/study-session/{session_id}/timer-start")
@@ -143,24 +149,32 @@ async def complete_study_session(
         StudySession.id == session_id,
         StudySession.user_id == current_user.id
     ).first()
-    
+
     if not session:
         raise HTTPException(status_code=404, detail="Studiensitzung nicht gefunden")
-    
+
     # Update report_id if provided
     if data.get("report_id"):
         session.report_id = data.get("report_id")
-    
+
+    # Update manual_report_text for manual sessions
+    if data.get("manual_report_text"):
+        session.manual_report_text = data.get("manual_report_text")
+
+    # Update case_id if provided
+    if data.get("case_id"):
+        session.case_id = data.get("case_id")
+
     # Update session with completion data
     session.timer_stop = datetime.utcnow()
     session.session_end = datetime.utcnow()
-    
+
     # Calculate durations
     if session.session_start and session.session_end:
         session.total_time_seconds = int(
             (session.session_end - session.session_start).total_seconds()
         )
-    
+
     # Update metrics from frontend
     session.template_used = data.get("template_used")
     session.input_words = data.get("input_words")
@@ -172,14 +186,27 @@ async def complete_study_session(
     session.characters_deleted = data.get("characters_deleted", 0)
     session.pause_count = data.get("pause_count", 0)
     session.total_pause_seconds = data.get("total_pause_seconds", 0)
-    
+
     # Quality assessment removed - not needed anymore
-    
+
     # Store complete session data as JSON
     session.session_data = data
-    
+
+    # Update the associated report with case_id and duration if report exists
+    if session.report_id:
+        from ..models.report_model import Report
+        report = db.query(Report).filter(Report.id == session.report_id).first()
+        if report:
+            # Update report with case_id if not already set
+            if session.case_id and not report.case_id:
+                report.case_id = session.case_id
+
+            # Update report with study duration
+            if session.total_time_seconds is not None:
+                report.study_duration_seconds = session.total_time_seconds
+
     db.commit()
-    
+
     return {"message": "Study session completed successfully"}
 
 @router.get("/study-data/export")
@@ -260,9 +287,11 @@ async def export_all_study_data(
 def _build_session_data(session: StudySession, db: Session, include_user_info: bool = False) -> dict:
     """Helper function to build session data dictionary"""
     from ..models.report_model import Report
-    
+
     session_data = {
         "session_id": session.id,
+        "case_id": session.case_id,  # NEW: Case ID for matching AI vs manual
+        "session_type": session.session_type,  # NEW: 'with_ai' or 'without_ai'
         "report_id": session.report_id,
         "timestamps": {
             "session_start": session.session_start.isoformat() if session.session_start else None,
@@ -300,7 +329,7 @@ def _build_session_data(session: StudySession, db: Session, include_user_info: b
             "experience_level": session.user.experience_level
         }
     
-    # Add report data if available
+    # Add report data if available (for AI-generated reports)
     if session.report_id:
         report = db.query(Report).filter(Report.id == session.report_id).first()
         if report:
@@ -310,7 +339,7 @@ def _build_session_data(session: StudySession, db: Session, include_user_info: b
                 # First try to get from user templates
                 from ..models.template_model import UserTemplate
                 template = db.query(UserTemplate).filter(UserTemplate.template_id == report.template_id).first()
-                
+
                 if template:
                     template_content = {
                         "id": template.template_id,
@@ -331,13 +360,14 @@ def _build_session_data(session: StudySession, db: Session, include_user_info: b
                                 "is_user_template": False
                             }
                             break
-            
+
             # Calculate word counts
             input_word_count = len(report.input_text.split()) if report.input_text else 0
             generated_word_count = len(report.report_text.split()) if report.report_text else 0
-            
+
             session_data["report"] = {
                 "report_id": report.id,
+                "is_manual": report.is_manual,
                 "input_text": report.input_text,
                 "generated_text": report.report_text,
                 "input_word_count": input_word_count,
@@ -346,6 +376,17 @@ def _build_session_data(session: StudySession, db: Session, include_user_info: b
                 "template_content": template_content,
                 "created_at": report.created_at.isoformat() if report.created_at else None
             }
+    elif session.manual_report_text:
+        # For manual sessions without a report_id (stored directly in session)
+        manual_word_count = len(session.manual_report_text.split()) if session.manual_report_text else 0
+        session_data["report"] = {
+            "report_id": None,
+            "is_manual": True,
+            "manual_text": session.manual_report_text,
+            "manual_word_count": manual_word_count,
+            "template_id": session.template_used,
+            "created_at": session.session_end.isoformat() if session.session_end else None
+        }
     else:
         session_data["report"] = None
     

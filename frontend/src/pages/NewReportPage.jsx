@@ -50,6 +50,7 @@ function NewReportPage() {
     editOperations,
     setEditOperations,
     checkStudyMode,
+    caseId,
   } = useStudy();
   const [inputText, setInputText] = useState("");
   const [reportText, setReportText] = useState("");
@@ -163,8 +164,12 @@ function NewReportPage() {
         toast.error("Bitte wählen Sie zuerst eine Vorlage aus");
         return;
       }
-      
-      const sessionId = await startStudySession(selectedTemplateId);
+
+      const sessionId = await startStudySession(
+        selectedTemplateId,
+        timerData.caseId,
+        "with_ai"
+      );
       setStudyTimerData(timerData);
       setShowStudyModal(false);
       setShowStudyTimer(true);
@@ -363,6 +368,7 @@ function NewReportPage() {
         input_text: inputText,
         template_id: selectedTemplateId || null,
         custom_prompt: customPrompt || null,
+        case_id: caseId || null,  // Include case_id from study session
       };
 
       const response = await fetch(`${API_URL}/reports/`, {

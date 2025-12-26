@@ -6,6 +6,13 @@ class ReportCreate(BaseModel):
     input_text: str
     template_id: Optional[str] = None
     custom_prompt: Optional[str] = None
+    case_id: Optional[str] = None  # For study session tracking
+
+class ManualReportCreate(BaseModel):
+    """Schema for creating a manually written report (without AI)"""
+    report_text: str
+    template_id: Optional[str] = None
+    case_id: Optional[str] = None
 
 class ReportUpdate(BaseModel):
     report_text: str
@@ -18,12 +25,17 @@ class ReportOut(BaseModel):
     user_id: int
     template_id: Optional[str] = None
     template_text: Optional[str] = None
-    
+    is_manual: bool = False
+
     # Word count metrics
     input_words: int = 0
     total_words: int = 0
     generated_words: int = 0
     saved_words: int = 0
+
+    # Study session tracking
+    case_id: Optional[str] = None
+    study_duration_seconds: Optional[int] = None
 
     class Config:
         from_attributes = True
