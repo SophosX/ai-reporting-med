@@ -26,6 +26,8 @@ function ReportDetailPage() {
     firstGenerationTime,
     editOperations,
     originalGeneratedText,
+    caseId,
+    clearStudySession,
   } = useStudy();
 
   useEffect(() => {
@@ -158,6 +160,7 @@ function ReportDetailPage() {
           },
           body: JSON.stringify({
             report_id: parseInt(reportId),
+            case_id: caseId,
             total_duration: totalDuration,
             editing_duration: editingDuration,
             pause_count: studyTimerData.pauseCount || 0,
@@ -173,6 +176,8 @@ function ReportDetailPage() {
 
       if (response.ok) {
         toast.success("Studiensitzung erfolgreich abgeschlossen!");
+        // Clear study session from context
+        clearStudySession();
         navigate("/");
       } else {
         throw new Error("Fehler beim Abschließen der Studiensitzung");
@@ -188,8 +193,10 @@ function ReportDetailPage() {
     const confirmCancel = window.confirm(
       "Sind Sie sicher, dass Sie die Studiensitzung abbrechen möchten? Alle Timer-Daten gehen verloren."
     );
-    
+
     if (confirmCancel) {
+      // Clear study session from context
+      clearStudySession();
       toast.info("Studiensitzung abgebrochen.");
       navigate("/");
     }

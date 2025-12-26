@@ -16,6 +16,7 @@ export function StudyProvider({ children }) {
   const [editOperations, setEditOperations] = useState(0);
   const [originalGeneratedText, setOriginalGeneratedText] = useState("");
   const [firstGenerationTime, setFirstGenerationTime] = useState(null);
+  const [caseId, setCaseId] = useState(null);
 
   // Load study mode status on mount
   useEffect(() => {
@@ -38,7 +39,7 @@ export function StudyProvider({ children }) {
     }
   };
 
-  const startStudySession = async (templateId = null) => {
+  const startStudySession = async (templateId = null, caseIdParam = null, sessionType = "with_ai") => {
     try {
       const response = await authenticatedFetch(
         `${API_URL}/study/study-session/start`,
@@ -49,6 +50,8 @@ export function StudyProvider({ children }) {
           },
           body: JSON.stringify({
             template_id: templateId || null,
+            case_id: caseIdParam || caseId,
+            session_type: sessionType,
           }),
         }
       );
@@ -56,12 +59,25 @@ export function StudyProvider({ children }) {
       if (response.ok) {
         const data = await response.json();
         setStudySessionId(data.session_id);
+        if (caseIdParam) {
+          setCaseId(caseIdParam);
+        }
         return data.session_id;
       }
     } catch (error) {
       console.error("Error starting study session:", error);
       throw error;
     }
+  };
+
+  const clearStudySession = () => {
+    setStudySessionId(null);
+    setStudyTimerData(null);
+    setGeneratedReportId(null);
+    setEditOperations(0);
+    setOriginalGeneratedText("");
+    setFirstGenerationTime(null);
+    setCaseId(null);
   };
 
   const value = {
@@ -79,8 +95,11 @@ export function StudyProvider({ children }) {
     setOriginalGeneratedText,
     firstGenerationTime,
     setFirstGenerationTime,
+    caseId,
+    setCaseId,
     checkStudyMode,
     startStudySession,
+    clearStudySession,
   };
 
   return (
