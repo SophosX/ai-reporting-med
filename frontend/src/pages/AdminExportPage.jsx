@@ -1,9 +1,41 @@
+/**
+ * @fileoverview AdminExportPage - Administrator-Export für Studiendaten.
+ *
+ * Diese Seite bietet Export-Funktionen für Administratoren und Benutzer.
+ * Sie ermöglicht den Download aller Studiendaten für die wissenschaftliche
+ * Analyse.
+ *
+ * Zwei Export-Optionen:
+ * 1. Admin Export (Alle Daten):
+ *    - Exportiert Daten ALLER Studienteilnehmer
+ *    - Nur für Benutzer mit admin-Rechten
+ *    - Endpoint: GET /study/study-data/export-all
+ *
+ * 2. Benutzer Export (Eigene Daten):
+ *    - Exportiert nur die eigenen Studiendaten
+ *    - Für alle Studienteilnehmer verfügbar
+ *    - Endpoint: GET /study/study-data/export
+ *
+ * Export-Inhalte:
+ * - Teilnehmer-Daten: Username, Name, Erfahrungslevel
+ * - Session-Metriken: Timer-Daten, Wortanzahlen, Bearbeitungsoperationen
+ * - Report-Inhalte: Eingabetext, generierter Bericht, Templates
+ * - Template-Daten: ID, Titel, vollständiger Text
+ *
+ * Download-Format: JSON-Datei mit Timestamp im Dateinamen
+ */
+
 import React, { useState } from "react";
 import { FaDownload, FaDatabase, FaChartBar, FaUsers, FaShieldAlt } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
 
+/**
+ * Administrator-Export-Seite mit Doppel-Export-Funktionalität.
+ *
+ * @returns {JSX.Element} Die gerenderte Export-Seite
+ */
 function AdminExportPage() {
   const [loading, setLoading] = useState(false);
   const [studyData, setStudyData] = useState(null);

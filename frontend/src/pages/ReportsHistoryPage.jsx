@@ -1,3 +1,27 @@
+/**
+ * @fileoverview ReportsHistoryPage - Historienansicht aller Berichte.
+ *
+ * Diese Seite zeigt alle vom Benutzer erstellten Berichte in einer
+ * erweiterbaren Listenansicht. Jeder Eintrag kann ein- oder ausgeklappt
+ * werden, um mehr Details zu sehen.
+ *
+ * Features:
+ * - Alle Berichte chronologisch sortiert
+ * - Kompakte Vorschau (eingeklappt): ID, Datum, Studien-Info, Wort-Metriken
+ * - Vollansicht (ausgeklappt): Komplette ReportCard
+ * - Bulk-Aktionen: Alle erweitern/zuklappen
+ * - Gesamtzähler der Berichte
+ * - Inline-Löschen mit automatischer State-Aktualisierung
+ *
+ * API-Endpunkte:
+ * - GET /reports/stats/count - Gesamtanzahl
+ * - GET /reports/ - Alle Berichte des Benutzers
+ *
+ * State-Management:
+ * - expandedReports (Set): IDs der ausgeklappten Berichte
+ * - reports (Array): Alle geladenen Berichte
+ */
+
 import React, { useEffect, useState } from "react";
 import {
   FaSync,
@@ -12,6 +36,11 @@ import ReportCard from "../components/ReportCard";
 import WordCountMetrics from "../components/WordCountMetrics";
 import API_URL from "../utils/apiConfig";
 
+/**
+ * Listenansicht aller Benutzer-Berichte mit Expand/Collapse.
+ *
+ * @returns {JSX.Element} Die gerenderte Historienansicht
+ */
 function ReportsHistoryPage() {
   const [reports, setReports] = useState([]);
   const [totalReports, setTotalReports] = useState(0);

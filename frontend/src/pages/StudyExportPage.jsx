@@ -1,9 +1,38 @@
+/**
+ * @fileoverview StudyExportPage - Export eigener Studiendaten.
+ *
+ * Diese Seite ermöglicht Studienteilnehmern den Export ihrer eigenen
+ * gesammelten Studiendaten. Sie ist einfacher als AdminExportPage und
+ * zeigt nur den Benutzer-spezifischen Export.
+ *
+ * Export-Inhalt:
+ * - Alle eigenen Study-Sessions mit Metriken
+ * - Timer-Daten (Gesamtdauer, Pausenzeiten)
+ * - Wortanzahlen und Effizienz-Metriken
+ * - Verwendete Templates
+ *
+ * API-Endpunkt:
+ * GET /study/study-data/export - Eigene Studiendaten
+ *
+ * Download-Format: JSON-Datei mit Datum im Dateinamen
+ * Beispiel: study_data_export_2025-02-03.json
+ *
+ * Nach dem Export wird eine Zusammenfassung mit:
+ * - Anzahl der Sessions
+ * - Export-Datum
+ */
+
 import React, { useState } from "react";
 import { FaDownload, FaDatabase, FaChartBar } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
 
+/**
+ * Export-Seite für die eigenen Studiendaten eines Teilnehmers.
+ *
+ * @returns {JSX.Element} Die gerenderte Export-Seite
+ */
 function StudyExportPage() {
   const [loading, setLoading] = useState(false);
   const [studyData, setStudyData] = useState(null);

@@ -1,3 +1,22 @@
+/**
+ * @fileoverview ReportsChart-Komponente - Interaktive Zeitreihen-Visualisierung.
+ *
+ * Diese Komponente zeigt ein Liniendiagramm der Berichtserstellung über Zeit.
+ * Sie verwendet Chart.js für die Visualisierung und unterstützt verschiedene
+ * Zeiträume (Tage, Wochen, Monate).
+ *
+ * Features:
+ * - Dynamische Periode-Auswahl (Tage/Wochen/Monate)
+ * - API-Integration für echte Daten
+ * - Fallback zu Mock-Daten bei API-Fehlern
+ * - Responsive Design mit Hover-Tooltips
+ * - Dunkles Theme passend zur Anwendung
+ *
+ * API-Endpunkt:
+ * GET /reports/analytics/timeline?period={days|weeks|months}
+ * Erwartet: { labels: string[], counts: number[], total_reports: number, period: string }
+ */
+
 import React, { useState, useEffect } from "react";
 import {
   Chart as ChartJS,
@@ -16,7 +35,7 @@ import { toast } from "react-toastify";
 import API_URL from "../utils/apiConfig";
 import { FaChartLine } from "react-icons/fa";
 
-// Register Chart.js components
+// Registriert alle benötigten Chart.js-Komponenten für Liniendiagramme mit Füllung
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -28,6 +47,24 @@ ChartJS.register(
   Filler
 );
 
+/**
+ * Interaktive Chart-Komponente für die Berichts-Timeline-Analyse.
+ *
+ * Zeigt ein Liniendiagramm mit der Anzahl erstellter Berichte über Zeit.
+ * Unterstützt drei Zeiträume:
+ * - days: Letzte 30 Tage (tägliche Granularität)
+ * - weeks: Letzte 8 Wochen (wöchentliche Granularität)
+ * - months: Letzte 6 Monate (monatliche Granularität)
+ *
+ * Bei API-Fehlern werden automatisch Mock-Daten generiert,
+ * um die UI-Funktionalität während der Entwicklung zu demonstrieren.
+ *
+ * @returns {JSX.Element} Das gerenderte Liniendiagramm mit Periode-Auswahl
+ *
+ * @example
+ * // Verwendung auf der HomePage
+ * <ReportsChart />
+ */
 const ReportsChart = () => {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);

@@ -1,13 +1,37 @@
+"""
+Templates Data - Standard-Radiologie-Templates und Template-Verwaltungsfunktionen.
+
+Dieses Modul enthält:
+1. radiologyTemplates: Liste aller Standard-Befund-Templates für verschiedene
+   radiologische Untersuchungen (CT, MRT, Röntgen, etc.)
+2. Funktionen zur Template-Verwaltung in der Datenbank
+
+Template-Struktur:
+Jedes Template hat:
+- id: Eindeutiger Identifier (z.B. "ct-thorax")
+- title: Anzeigename (z.B. "CT Thorax")
+- text: Strukturierter Befundtext mit Standardformulierungen
+
+Beim Anwendungsstart werden diese Templates automatisch in die Datenbank
+importiert (via import_default_templates). Die Funktion synchronisiert
+auch Änderungen (neue Templates hinzufügen, alte entfernen).
+
+Template-Hierarchie:
+- System-Templates: user_id=1, is_default_override=False
+- Benutzer-Overrides: user_id=<user>, is_default_override=True
+- Benutzer-Templates: user_id=<user>, is_default_override=False
+"""
+
 from ..models.template_model import UserTemplate
-from ..models.user_model import User  # Import User model to resolve SQLAlchemy relationships
+from ..models.user_model import User  # Import für SQLAlchemy-Beziehungen
 from sqlalchemy.orm import Session
 import logging
 
-# Configure logging
+# Logger für Template-Operationen
 logger = logging.getLogger(__name__)
 
-# This file contains the radiological report templates
-
+# Standard-Radiologie-Templates für verschiedene Untersuchungstypen
+# Diese werden beim Anwendungsstart in die Datenbank importiert
 radiologyTemplates = [
     {
         "id": "roentgen-thorax",
@@ -39,14 +63,12 @@ radiologyTemplates = [
         "title": "Normalbefund Abdomen Lang",
         "text": """Regelrechte Darstellung der Leber ohne Nachweis fokaler Parenchymläsionen. Regelrechte Kontrastierung der venösen und portalvenösen Gefäße. Arterieller Normalversorgungstyp. Keine intra- oder extrahepatische Cholestase. Unauffällige Gallenblase. Regelrechte Darstellung der Milz, des Pancreas sowie der Nebennieren.
 
-Regelrechte Darstellung der Nieren, kein Harnstau. Harnblase unauffällig.///// Einzelne unkomplizierte Nierenzysten beidseits, sonst regelrechte Darstellung der Nieren, kein Harnstau.
+Regelrechte Darstellung der Nieren, kein Harnstau. Harnblase unauffällig.
 
 Regelrechte Kontrastierung der Darmwände von Dünn- und Dickdarm. Keine Passagestörung. Regelrechte Darstellung der Organe im kleinen Becken.
 Keine freie intraabdominale Flüssigkeit. Keine freie Luft. Keine abdominelle Lymphadenopathie.
 
-WENN NUR VENÖS: Soweit in der aktuellen Phase abgrenzbar regelrechte Kontrastierung der abgebildeten Gefäßabschnitte.
-
-WENN ARTERIELL: Insgesamt regelrechte Kontrastierung der Aorta abdominalis sowie der viszeralen Gefäßabgänge. Kein Nachweis eines embolischen Gefäßverschlusses oder einer aktiven Blutung."""
+Soweit in der aktuellen Phase abgrenzbar regelrechte Kontrastierung der abgebildeten Gefäßabschnitte."""
     },
     {
         "id": "CTBABKURZ",
@@ -57,9 +79,7 @@ Keine freie intraabdominale Flüssigkeit, keine freie Luft. Keine abdominelle Ly
     {
         "id": "CTBASBEST",
         "title": "Normalbefund Asbest",
-        "text": """Es liegen mehrere Voruntersuchungen zum Vergleich vor, zuletzt vom
-
-Atemartefakte.
+        "text": """Atemartefakte.
 Tracheobronchialsystem frei durchgängig. Regelrechte Belüftung beider Lungenflügel. Keine pneumonischen Infiltrate. Kein Pleuraerguss. Kein Pneumothorax. Keine malignomsuspekten intrapulmonalen Rundherde. Keine Pleuraplaques.
 
 Normgroßes Herz ohne Dekompensationszeichen. Kein Perikarderguss.
@@ -79,9 +99,7 @@ Regelrechte Darstellung der abgebildeten pneumatisierten Räume. Knöcherne Stru
     {
         "id": "CTBHALS",
         "title": "Normalbefund Hals CT",
-        "text": """Partiell eingeschränkte Beurteilbarkeit bei Aufhärtungsartefakten durch Zahnersatzmaterial.
-
-Regelrechte, symmetrische Darstellung der Halsweichteile ohne Nachweis einer umschriebenen Raumforderung. Keine zervikale Lymphadenopathie.
+        "text": """Regelrechte, symmetrische Darstellung der Halsweichteile ohne Nachweis einer umschriebenen Raumforderung. Keine zervikale Lymphadenopathie.
 Normal große Schilddrüse. Regelrechte Kontrastierung der Halsgefäße.
 Freie Belüftung der partiell miterfassten Nasennebenhöhlen."""
     },
@@ -146,12 +164,71 @@ Gering ausgeprägte, degenerative Wirbelsäulenveränderungen. Keine frische Fra
 
 Beurteilung:
 Vitientypische Aortenklappenverkalkungen. Freier, transfemoraler, arterieller Zugangsweg vor TAVI."""
+    },
+    {
+        "id": "ct-hals-thorax-abdomen",
+        "title": "CT Hals, Thorax, Abdomen",
+        "text": """Hals:
+Falls Metall angegeben: Partiell eingeschränkte Beurteilbarkeit bei Aufhärtungsartefakten durch Zahnersatzmaterial.
+
+
+Regelrechte, symmetrische Darstellung der Halsweichteile ohne Nachweis einer umschriebenen Raumforderung. Keine zervikale Lymphadenopathie.
+Normal große Schilddrüse. Regelrechte Kontrastierung der Halsgefäße.
+Freie Belüftung der partiell miterfassten Nasennebenhöhlen.
+
+Thorax:
+Beidseits regelrecht belüftete Lungenflügel, keine relevanten Belüftungsstörungen. Keine pneumonischen Infiltrate. Kein Pleuraerguss. Kein Pneumothorax.
+Keine malignomsuspekten intrapulmonalen Rundherde.
+Normgroßes Herz. Kein Perikarderguss.
+Regelrechte Darstellung der großen intrathorakalen Gefäße.
+Keine thorakale Lymphadenopathie.
+
+Abdomen:
+Regelrechte Darstellung der Leber ohne Nachweis fokaler Parenchymläsionen. Regelrechte Kontrastierung der venösen und portalvenösen Gefäße. Arterieller Normalversorgungstyp. Keine intra- oder extrahepatische Cholestase. Unauffällige Gallenblase.
+Regelrechte Darstellung der Milz, des Pancreas sowie der Nebennieren.
+Regelrechte Darstellung der Nieren, kein Harnstau. Harnblase unauffällig.
+Regelrechte Kontrastierung der Darmwände von Dünn- und Dickdarm. Keine Passagestörung.
+Regelrechte Darstellung der Organe im kleinen Becken.
+Keine freie intraabdominale Flüssigkeit. Keine freie Luft. Keine abdominelle Lymphadenopathie.
+Soweit in der aktuellen Phase abgrenzbar regelrechte Kontrastierung der abgebildeten Gefäßabschnitte.
+
+Skelett:
+Altersentsprechend unauffällige Darstellung des Achsenskeletts. Keine malingomsuspekten ossären Läsionen. Keine Frakturen."""
+    },
+    {
+        "id": "ct-felsenbein",
+        "title": "CT Felsenbein",
+        "text": """Regelrecht pneumatisierte Felsenbeine beidseits.Unauffällige Anlage und Darstellung der Schnecke sowie der Gehörknöchelchen beidseits. Normal pneumatisiertes Cavum tympani mit allseits glatten Konturen und unauffällig abgrenzbaren Gehörknöchelchen. Frei durchgängige, glatt begrenzte äußere Gehörgänge beidseits. 
+Gute knöcherne Deckung der Bogengänge. Keine Bogengangdehiszenz. 
+Kein Nachweis eines raumfordernden Prozesses. Regelhafte Pneumatisation der Mastoidzellen. Unauffällige mitabgebildete Nasennebenhöhlen. 
+ """
     }
 ]
 
 
 def get_template_by_id(template_id: str, db: Session = None, user_id: int = None):
-    """Get a template by its ID from the database"""
+    """
+    Ruft ein Template nach ID aus der Datenbank ab.
+
+    Prüft in folgender Reihenfolge:
+    1. Benutzer-spezifisches Template (wenn user_id angegeben)
+    2. System-Template (user_id=1)
+
+    Args:
+        template_id (str): Die eindeutige Template-ID (z.B. "ct-thorax")
+        db (Session): SQLAlchemy-Datenbank-Session
+        user_id (int, optional): ID des aktuellen Benutzers für Override-Prüfung
+
+    Returns:
+        dict: Template-Daten oder None wenn nicht gefunden
+            - id: Template-ID
+            - title: Anzeigename
+            - text: Template-Text
+            - user_created: True wenn Benutzer-Template
+            - is_default_override: True wenn Override eines System-Templates
+            - default_template_id: ID des überschriebenen Templates
+            - template_db_id: Datenbank-ID
+    """
     if not db:
         return None
         
@@ -194,7 +271,26 @@ def get_template_by_id(template_id: str, db: Session = None, user_id: int = None
     }
 
 def get_all_templates(db: Session = None, user_id: int = None):
-    """Get all available templates from the database"""
+    """
+    Ruft alle verfügbaren Templates aus der Datenbank ab.
+
+    Kombiniert System-Templates mit Benutzer-Templates und -Overrides.
+    Gelöschte Templates (markiert mit "[DELETED]") werden ausgeblendet.
+
+    Ablauf:
+    1. System-Templates laden (user_id=1)
+    2. Benutzer-Overrides laden (wenn user_id angegeben)
+    3. Benutzer-eigene Templates laden
+    4. Gelöschte Templates herausfiltern
+    5. Overrides mit System-Templates zusammenführen
+
+    Args:
+        db (Session): SQLAlchemy-Datenbank-Session
+        user_id (int, optional): ID des aktuellen Benutzers
+
+    Returns:
+        List[dict]: Liste aller verfügbaren Templates mit Metadaten
+    """
     if not db:
         return []
         
@@ -276,7 +372,21 @@ def get_all_templates(db: Session = None, user_id: int = None):
     return templates
 
 def update_default_template(template_id: str, title=None, text=None):
-    """Update a default template"""
+    """
+    Aktualisiert ein Standard-Template im In-Memory-Array.
+
+    HINWEIS: Diese Funktion ändert nur das radiologyTemplates-Array,
+    nicht die Datenbank. Für persistente Änderungen müssen die
+    Templates in der DB aktualisiert werden.
+
+    Args:
+        template_id (str): ID des zu aktualisierenden Templates
+        title (str, optional): Neuer Titel
+        text (str, optional): Neuer Text
+
+    Returns:
+        dict: Das aktualisierte Template oder None wenn nicht gefunden
+    """
     try:
         for i, template in enumerate(radiologyTemplates):
             if template["id"] == template_id:
@@ -301,7 +411,23 @@ def delete_default_template(template_id: str):
     return False
 
 def import_default_templates(db: Session):
-    """Import default templates into the database if they don't exist and remove templates that are no longer in the array"""
+    """
+    Synchronisiert die Standard-Templates mit der Datenbank.
+
+    Diese Funktion wird beim Anwendungsstart aufgerufen und:
+    1. Importiert neue Templates aus radiologyTemplates
+    2. Aktualisiert existierende Templates
+    3. Entfernt Templates, die nicht mehr im Array sind
+    4. Entfernt auch zugehörige Benutzer-Overrides gelöschter Templates
+
+    Die Funktion ist idempotent - mehrfache Aufrufe sind sicher.
+
+    Args:
+        db (Session): SQLAlchemy-Datenbank-Session
+
+    Raises:
+        Exception: Bei Datenbankfehlern (wird nach Rollback weitergereicht)
+    """
     
     # Get current template IDs from the radiologyTemplates array
     current_template_ids = {template["id"] for template in radiologyTemplates}
@@ -366,7 +492,23 @@ def import_default_templates(db: Session):
         raise
 
 def update_all_templates_formatting(db: Session):
-    """Update all existing templates with the new formatting - this will affect all users"""
+    """
+    Aktualisiert die Formatierung ALLER Templates (System + Overrides).
+
+    WARNUNG: Diese Funktion überschreibt auch Benutzer-Anpassungen!
+    Sie sollte nur verwendet werden, wenn eine grundlegende Formatänderung
+    für alle Templates erforderlich ist.
+
+    Ablauf:
+    1. System-Templates aktualisieren
+    2. ALLE Benutzer-Overrides aktualisieren (Anpassungen gehen verloren)
+
+    Args:
+        db (Session): SQLAlchemy-Datenbank-Session
+
+    Raises:
+        Exception: Bei Datenbankfehlern (wird nach Rollback weitergereicht)
+    """
     logger.info("Starting formatting update for all templates...")
     
     # Get all default templates that need updating

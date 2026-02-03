@@ -1,5 +1,39 @@
+/**
+ * @fileoverview App - Haupt-Anwendungskomponente mit Routing.
+ *
+ * Diese Datei definiert die gesamte Routing-Struktur der Anwendung.
+ * Sie verwendet React Router für clientseitiges Routing und
+ * Context Provider für globalen State.
+ *
+ * Routing-Struktur:
+ *
+ * Öffentliche Routen (ohne Auth):
+ * - /login - Anmeldung und Registrierung
+ * - /register - Standalone-Registrierung
+ *
+ * Geschützte Routen (mit ProtectedRoute):
+ * - / - HomePage (Dashboard)
+ * - /templates - Template-Verwaltung
+ * - /reports/new - Neuen Bericht erstellen
+ * - /reports/history - Berichtshistorie
+ * - /reports/:reportId - Einzelner Bericht
+ * - /study/export - Eigene Studiendaten exportieren
+ * - /admin/export - Admin-Export (alle Daten)
+ * - /study/fix - Benutzerdaten-Synchronisation
+ * - /study/manual-report - Manueller Bericht (ohne KI)
+ *
+ * Context Provider Hierarchie:
+ * 1. BrowserRouter - Routing
+ * 2. StudyProvider - Studien-Session-State (global)
+ * 3. TemplateProvider - Template-State (nur wo benötigt)
+ *
+ * TemplateProvider wird pro Route eingefügt (nicht global), um
+ * unnötige API-Aufrufe auf Seiten zu vermeiden, die keine
+ * Templates benötigen.
+ */
+
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -13,10 +47,19 @@ import ReportDetailPage from "./pages/ReportDetailPage";
 import StudyExportPage from "./pages/StudyExportPage";
 import AdminExportPage from "./pages/AdminExportPage";
 import StudyDataFixPage from "./pages/StudyDataFixPage";
+import ManualReportPage from "./pages/ManualReportPage";
 import { ToastContainer } from "react-toastify";
 import { TemplateProvider } from "./context/TemplateContext";
 import { StudyProvider } from "./context/StudyContext";
 
+/**
+ * Haupt-App-Komponente mit vollständiger Routing-Konfiguration.
+ *
+ * Rendert die Navbar global und wrappt geschützte Routen
+ * mit ProtectedRoute für Authentifizierungsprüfung.
+ *
+ * @returns {JSX.Element} Die gesamte Anwendung
+ */
 function App() {
   return (
     <BrowserRouter>
@@ -79,6 +122,11 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Redirect /reports to /reports/history - must be after :reportId route */}
+          <Route
+            path="/reports"
+            element={<Navigate to="/reports/history" replace />}
+          />
           <Route
             path="/study/export"
             element={
@@ -100,6 +148,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <StudyDataFixPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/study/manual-report"
+            element={
+              <ProtectedRoute>
+                <TemplateProvider>
+                  <ManualReportPage />
+                </TemplateProvider>
               </ProtectedRoute>
             }
           />

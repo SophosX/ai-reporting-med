@@ -1,3 +1,17 @@
+/**
+ * @fileoverview Navbar-Komponente - Hauptnavigationsleiste der Anwendung.
+ *
+ * Zeigt kontextabhängige Navigation basierend auf:
+ * - Authentifizierungsstatus (eingeloggt/ausgeloggt)
+ * - Studienteilnehmer-Status (zusätzliche Studien-Links)
+ * - Admin-Status (Admin-Export-Link)
+ *
+ * Features:
+ * - Responsive Design (Desktop + Mobile mit Hamburger-Menü)
+ * - Automatische Prüfung des Studien- und Admin-Status beim Laden
+ * - Logout-Funktionalität mit Toast-Benachrichtigung
+ */
+
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isAuthenticated, logout, authenticatedFetch } from "../utils/auth";
@@ -13,8 +27,20 @@ import {
   FaBars,
   FaDatabase,
   FaShieldAlt,
+  FaEdit,
 } from "react-icons/fa";
 
+/**
+ * Navbar-Komponente für die Hauptnavigation der Anwendung.
+ *
+ * Zeigt unterschiedliche Navigation basierend auf dem Benutzerstatus:
+ * - Nicht eingeloggt: Login/Register-Links
+ * - Eingeloggt: Berichte, Vorlagen, Historie
+ * - Studienteilnehmer: Zusätzlich manuelle Berichte und Studien-Export
+ * - Admin: Zusätzlich Admin-Export
+ *
+ * @returns {JSX.Element} Die gerenderte Navigationsleiste
+ */
 function Navbar() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -113,11 +139,18 @@ function Navbar() {
                     label="Vorlagen"
                   />
                   {isStudyUser && (
-                    <NavLink
-                      to="/study/export"
-                      icon={FaDatabase}
-                      label="Studien-Export"
-                    />
+                    <>
+                      <NavLink
+                        to="/study/manual-report"
+                        icon={FaEdit}
+                        label="Manueller Bericht"
+                      />
+                      <NavLink
+                        to="/study/export"
+                        icon={FaDatabase}
+                        label="Studien-Export"
+                      />
+                    </>
                   )}
                   {isAdmin && (
                     <NavLink
@@ -179,11 +212,18 @@ function Navbar() {
                   label="Vorlagen"
                 />
                 {isStudyUser && (
-                  <NavLink
-                    to="/study/export"
-                    icon={FaDatabase}
-                    label="Studien-Export"
-                  />
+                  <>
+                    <NavLink
+                      to="/study/manual-report"
+                      icon={FaEdit}
+                      label="Manueller Bericht"
+                    />
+                    <NavLink
+                      to="/study/export"
+                      icon={FaDatabase}
+                      label="Studien-Export"
+                    />
+                  </>
                 )}
                 {isAdmin && (
                   <NavLink

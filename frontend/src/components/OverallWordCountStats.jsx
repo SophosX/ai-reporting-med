@@ -1,3 +1,25 @@
+/**
+ * @fileoverview OverallWordCountStats-Komponente - Aggregierte Effizienz-Dashboard.
+ *
+ * Diese Komponente zeigt aggregierte Wortzahl-Statistiken über mehrere Berichte.
+ * Sie dient als zentrales Dashboard für die Gesamt-Effizienz-Analyse und
+ * visualisiert die kumulative Zeitersparnis durch KI-Unterstützung.
+ *
+ * Datenquellen:
+ * - API-Modus (useApi=true): Lädt Statistiken vom Backend-Endpunkt
+ * - Local-Modus: Berechnet Statistiken aus übergebenem Reports-Array
+ *
+ * API-Endpunkt:
+ * GET /reports/stats/word-counts
+ * Erwartet: Aggregierte Statistiken inkl. Durchschnittswerte
+ *
+ * Angezeigte KPIs:
+ * - Eingabe gesamt: Summe aller Eingabewörter
+ * - KI-generiert: Summe aller generierten Wörter
+ * - Finale Berichte: Summe aller finalen Wörter
+ * - Gesparte Wörter: Kumulative Einsparung (Finale - Eingabe)
+ */
+
 import React, { useState, useEffect } from "react";
 import {
   FaKeyboard,
@@ -19,6 +41,27 @@ import {
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
 
+/**
+ * Dashboard-Komponente für aggregierte Wortzahl-Statistiken.
+ *
+ * Zeigt Gesamt- und Durchschnittswerte für alle analysierten Berichte.
+ * Kann entweder vom Backend (für genaue Daten) oder lokal (für schnelle
+ * Vorschau) berechnen.
+ *
+ * @param {Object} props - Komponenten-Props
+ * @param {Array<Object>} [props.reports] - Array von Report-Objekten (für lokale Berechnung)
+ * @param {boolean} [props.useApi=false] - True um Daten vom Backend zu laden
+ * @param {boolean} [props.showTimeframe=false] - Zeigt "Diese Woche" Label
+ * @returns {JSX.Element|null} Das Dashboard oder null wenn keine Daten
+ *
+ * @example
+ * // Mit API-Daten auf der HomePage
+ * <OverallWordCountStats useApi={true} />
+ *
+ * @example
+ * // Mit lokalem Reports-Array
+ * <OverallWordCountStats reports={reports} />
+ */
 const OverallWordCountStats = ({
   reports,
   useApi = false,

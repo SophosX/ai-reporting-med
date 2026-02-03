@@ -1,3 +1,23 @@
+"""
+Templates Router - API-Endpoints für System- und Benutzer-Templates.
+
+Dieses Modul enthält Endpoints für die Template-Verwaltung:
+
+Template-Abruf:
+- GET /templates/: Alle verfügbaren Templates (System + Benutzer)
+- GET /templates/{template_id}: Einzelnes Template abrufen
+
+Template-Bearbeitung:
+- PUT /templates/{template_id}: Template aktualisieren
+- DELETE /templates/{template_id}: Template löschen/ausblenden
+- POST /templates/{template_id}/override: System-Template überschreiben
+
+Das System unterscheidet zwischen:
+1. System-Templates: Vordefinierte Standard-Templates (CT, MRT, etc.)
+2. Benutzer-Templates: Vom Benutzer erstellte Templates
+3. Overrides: Benutzeranpassungen von System-Templates
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from ..data.templates import get_all_templates, get_template_by_id, update_default_template, delete_default_template
 from ..core.database import get_db
@@ -9,9 +29,18 @@ from ..core.config import settings
 from pydantic import BaseModel
 from ..models.template_model import UserTemplate
 
+
 class TemplateUpdate(BaseModel):
+    """
+    Pydantic-Model für Template-Aktualisierungen.
+
+    Attributes:
+        title (str, optional): Neuer Anzeigename des Templates
+        text (str, optional): Neuer Template-Text
+    """
     title: Optional[str] = None
     text: Optional[str] = None
+
 
 router = APIRouter()
 
@@ -20,7 +49,25 @@ async def get_templates(
     db: Session = Depends(get_db),
     token: Optional[str] = Depends(oauth2_scheme)
 ):
-    """Get all available templates, including user templates if authenticated"""
+    """
+    Ruft alle verfügbaren Templates ab.
+
+    Gibt sowohl System-Templates als auch benutzerspezifische Templates zurück.
+    Wenn der Benutzer authentifiziert ist, werden auch seine eigenen Templates
+    und Overrides von System-Templates einbezogen.
+
+    Template-Priorisierung:
+    1. Benutzer-Overrides ersetzen das ursprüngliche System-Template
+    2. Benutzer-Templates werden zusätzlich angezeigt
+    3. Gelöschte System-Templates werden für den Benutzer ausgeblendet
+
+    Args:
+        db (Session): Datenbank-Session
+        token (str, optional): JWT-Token für Benutzeridentifikation
+
+    Returns:
+        List[dict]: Liste aller verfügbaren Templates
+    """
     user_id = None
     if token:
         try:
@@ -40,7 +87,20 @@ async def get_template(
     db: Session = Depends(get_db),
     token: Optional[str] = Depends(oauth2_scheme)
 ):
-    """Get a specific template by ID, including user templates if authenticated"""
+    """
+    Ruft ein einzelnes Template nach ID ab.
+
+    Berücksichtigt Benutzer-Overrides: Wenn der Benutzer ein Override für
+    das angeforderte System-Template hat, wird das Override zurückgegeben.
+
+    Args:
+        template_id (str): ID des Templates (z.B. "ct-thorax-standard")
+        db (Session): Datenbank-Session
+        token (str, optional): JWT-Token für Benutzeridentifikation
+
+    Returns:
+        dict: Template-Daten oder Fehlermeldung
+    """
     user_id = None
     if token:
         try:
@@ -63,7 +123,25 @@ async def update_template(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Update a template"""
+    """
+    Aktualisiert ein Template.
+
+    Ermöglicht das Ändern von Titel und/oder Text eines Templates.
+    Nur Benutzer-Templates können direkt aktualisiert werden.
+
+    Args:
+        template_id (str): ID des zu aktualisierenden Templates
+        template_data (TemplateUpdate): Neue Werte für Titel/Text
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        dict: Aktualisierte Template-Daten
+
+    Raises:
+        HTTPException (404): Wenn das Template nicht existiert
+        HTTPException (500): Bei Datenbankfehlern
+    """
     # Get the template
     template = db.query(UserTemplate).filter(
         UserTemplate.template_id == template_id
@@ -102,7 +180,26 @@ async def remove_template(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Delete a template - for default templates, delete user overrides to revert to default"""
+    """
+    Löscht ein Template oder setzt ein Override auf den Standard zurück.
+
+    Das Verhalten hängt vom Template-Typ ab:
+    1. Benutzer-Template (nicht Override): Wird dauerhaft gelöscht
+    2. Benutzer-Override: Wird gelöscht, System-Template wird wieder sichtbar
+    3. System-Template: Wird für den Benutzer ausgeblendet (nicht wirklich gelöscht)
+
+    Args:
+        template_id (str): ID des zu löschenden Templates
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        dict: Erfolgsmeldung
+
+    Raises:
+        HTTPException (404): Wenn das Template nicht existiert
+        HTTPException (500): Bei Datenbankfehlern
+    """
     # First check if the template exists for this user
     template = get_template_by_id(template_id, db=db, user_id=current_user_id)
     if not template:
@@ -182,7 +279,31 @@ async def override_default_template(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Create a user-specific override for a default template"""
+    """
+    Erstellt eine benutzerspezifische Überschreibung eines System-Templates.
+
+    Ermöglicht Benutzern, ein System-Template anzupassen, ohne das Original
+    zu verändern. Das Override wird anstelle des System-Templates angezeigt.
+
+    Beispiel:
+    - Benutzer will "CT Thorax Standard" anpassen
+    - Override wird erstellt mit ID "user-{user_id}-override-ct-thorax-standard"
+    - Bei Template-Abruf wird das Override zurückgegeben
+
+    Args:
+        template_id (str): ID des zu überschreibenden System-Templates
+        template_data (TemplateUpdate): Anpassungen (Titel/Text)
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        dict: Das erstellte Override-Template
+
+    Raises:
+        HTTPException (404): Wenn das System-Template nicht existiert
+        HTTPException (400): Wenn es bereits ein Benutzer-Template ist
+        HTTPException (500): Bei Datenbankfehlern
+    """
     # First check if the template exists
     template = get_template_by_id(template_id, db=db, user_id=current_user_id)
     if not template:

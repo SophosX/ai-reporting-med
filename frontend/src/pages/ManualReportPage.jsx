@@ -1,3 +1,29 @@
+/**
+ * @fileoverview ManualReportPage - Manuelle Berichterstellung ohne KI.
+ *
+ * Diese Seite ermöglicht die Erstellung von Befundberichten ohne KI-Unterstützung.
+ * Sie dient primär für die wissenschaftliche Studie zum Vergleich zwischen
+ * KI-gestützter und manueller Befundung.
+ *
+ * Workflow (Studienmodus):
+ * 1. Seite öffnet automatisch StudyTimerModal
+ * 2. Benutzer gibt Fall-ID ein (MUSS gleich sein wie bei KI-Bericht für Vergleich)
+ * 3. Timer startet, StudyTimerBar erscheint
+ * 4. Benutzer schreibt Befund manuell in großes Textfeld
+ * 5. "Bericht speichern" erstellt manuellen Bericht
+ * 6. Weiterleitung zur ReportDetailPage für Studien-Abschluss
+ *
+ * Unterschiede zu NewReportPage:
+ * - Kein KI-Aufruf (report_text = manualText)
+ * - Keine Template-Auswahl
+ * - Kein Custom Prompt
+ * - session_type = "without_ai"
+ * - is_manual = true im Bericht
+ *
+ * API-Endpunkt:
+ * POST /reports/manual - Erstellt manuellen Bericht
+ */
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -13,6 +39,16 @@ import StudyTimerBar from "../components/StudyTimerBar";
 import StudyTimerModal from "../components/StudyTimerModal";
 import { authenticatedFetch } from "../utils/auth";
 
+/**
+ * Seite für manuelle (KI-freie) Berichterstellung im Studienmodus.
+ *
+ * Die Seite ist speziell für Studienteilnehmer konzipiert, um
+ * einen Vergleich zwischen KI-gestützter und manueller Befundung
+ * zu ermöglichen. Die gleiche Fall-ID muss für beide Methoden
+ * verwendet werden, um einen direkten Vergleich zu ermöglichen.
+ *
+ * @returns {JSX.Element} Die gerenderte manuelle Berichterstellungs-Seite
+ */
 function ManualReportPage() {
   const navigate = useNavigate();
   const {
@@ -125,47 +161,13 @@ function ManualReportPage() {
       }
 
       const reportData = await reportResponse.json();
-      toast.success("Manueller Bericht erfolgreich gespeichert");
+      toast.success("Bericht gespeichert - Timer läuft weiter");
 
-      // Complete study session if in study mode
-      if (isStudyMode && studySessionId) {
-        const endTime = new Date();
-        const totalDuration = Math.floor(
-          (endTime - new Date(studyTimerData.startTime)) / 1000
-        );
-        const finalWordCount = manualText.trim().split(/\s+/).length;
-
-        const sessionResponse = await authenticatedFetch(
-          `${API_URL}/study/study-session/${studySessionId}/complete`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              report_id: reportData.id,
-              case_id: caseId,
-              manual_report_text: manualText,
-              total_duration: totalDuration,
-              pause_count: studyTimerData.pauseCount || 0,
-              total_pause_seconds: studyTimerData.totalPauseTime || 0,
-              final_words: finalWordCount,
-              template_used: null,
-            }),
-          }
-        );
-
-        if (sessionResponse.ok) {
-          toast.success("Studiensitzung erfolgreich abgeschlossen!");
-          // Clear study session from context
-          clearStudySession();
-        }
-      }
-
-      // Navigate to reports history page
+      // Navigate to report detail page where user can finalize the study
+      // Timer continues running until user clicks "Studie abschließen"
       setTimeout(() => {
-        navigate("/reports");
-      }, 1500);
+        navigate(`/reports/${reportData.id}`);
+      }, 1000);
     } catch (error) {
       console.error("Error saving manual report:", error);
       toast.error(error.message || "Fehler beim Speichern des Berichts");
@@ -253,8 +255,8 @@ function ManualReportPage() {
                 </>
               ) : (
                 <>
-                  <FaCheckCircle />
-                  <span>Bericht speichern und Studie abschließen</span>
+                  <FaSave />
+                  <span>Bericht speichern</span>
                 </>
               )}
             </button>

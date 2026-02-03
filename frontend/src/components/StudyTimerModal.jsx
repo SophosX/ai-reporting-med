@@ -1,3 +1,23 @@
+/**
+ * @fileoverview StudyTimerModal-Komponente - Vollbild-Modal für Studien-Session-Start.
+ *
+ * Diese Komponente zeigt ein Modal-Fenster zum Starten einer neuen Studien-Session.
+ * Sie führt den Benutzer durch den Session-Start und erfasst wichtige Metadaten.
+ *
+ * Zwei Ansichten:
+ * 1. Info-Screen: Erklärt was gemessen wird, erfordert Fall-ID-Eingabe
+ * 2. Timer-Screen: Zeigt laufenden Timer mit Pause-Funktionalität
+ *
+ * Erfasste Daten:
+ * - startTime: Zeitpunkt des Timer-Starts
+ * - pauseCount: Anzahl der Unterbrechungen
+ * - totalPauseTime: Kumulative Pausenzeit in Sekunden
+ * - caseId: Eindeutige Fall-Identifikation für Vergleiche
+ *
+ * Die Fall-ID ist wichtig für das spätere Pairing von KI-gestützten
+ * und manuellen Berichten desselben Falles in der Studien-Auswertung.
+ */
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   FaPlay,
@@ -9,6 +29,34 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 
+/**
+ * Modal-Komponente für den Start einer Studien-Session.
+ *
+ * Zeigt zunächst Informationen über die Studien-Messung und
+ * erfordert eine Fall-ID-Eingabe. Nach dem Start wird der
+ * laufende Timer mit Pause-Option angezeigt.
+ *
+ * Der Timer läuft im Modal weiter, auch wenn das Modal geschlossen
+ * wird (z.B. durch Einblenden der StudyTimerBar in der Hauptansicht).
+ *
+ * @param {Object} props - Komponenten-Props
+ * @param {boolean} props.isOpen - Steuert Sichtbarkeit des Modals
+ * @param {Function} props.onStart - Callback bei Timer-Start mit Timer-Daten
+ * @param {Object} props.onStart.timerData - Übergebene Timer-Daten
+ * @param {Date} props.onStart.timerData.startTime - Startzeit
+ * @param {number} props.onStart.timerData.pauseCount - Aktuelle Pausenanzahl
+ * @param {number} props.onStart.timerData.totalPauseTime - Pausenzeit in Sekunden
+ * @param {string} props.onStart.timerData.caseId - Eingegebene Fall-ID
+ * @param {Function} props.onCancel - Callback zum Abbrechen/Schließen
+ * @returns {JSX.Element|null} Das Modal oder null wenn nicht offen
+ *
+ * @example
+ * <StudyTimerModal
+ *   isOpen={showTimerModal}
+ *   onStart={(timerData) => handleStudyStart(timerData)}
+ *   onCancel={() => setShowTimerModal(false)}
+ * />
+ */
 function StudyTimerModal({ isOpen, onStart, onCancel }) {
   const [showInfo, setShowInfo] = useState(true);
   const [timerStarted, setTimerStarted] = useState(false);
@@ -17,6 +65,7 @@ function StudyTimerModal({ isOpen, onStart, onCancel }) {
   const [pauseCount, setPauseCount] = useState(0);
   const [totalPauseTime, setTotalPauseTime] = useState(0);
   const [pauseStartTime, setPauseStartTime] = useState(null);
+  const [caseId, setCaseId] = useState("");
 
   // Timer effect
   useEffect(() => {
@@ -40,12 +89,17 @@ function StudyTimerModal({ isOpen, onStart, onCancel }) {
   };
 
   const handleStart = () => {
+    if (!caseId.trim()) {
+      alert("Bitte geben Sie eine Fall-ID ein!");
+      return;
+    }
     setShowInfo(false);
     setTimerStarted(true);
     onStart({
       startTime: new Date(),
       pauseCount: 0,
       totalPauseTime: 0,
+      caseId: caseId.trim(),
     });
   };
 
@@ -136,6 +190,25 @@ function StudyTimerModal({ isOpen, onStart, onCancel }) {
                     Sie unterbrochen werden. Klicken Sie auf "Timer starten", wenn Sie bereit sind.
                   </p>
                 </div>
+              </div>
+
+              {/* Case ID Input */}
+              <div className="space-y-2">
+                <label htmlFor="caseId" className="block text-sm font-medium text-blue-200">
+                  Fall-ID (Pflichtfeld)
+                </label>
+                <input
+                  type="text"
+                  id="caseId"
+                  value={caseId}
+                  onChange={(e) => setCaseId(e.target.value)}
+                  placeholder="z.B. Fall-123 oder Patient-XYZ"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  required
+                />
+                <p className="text-xs text-gray-400">
+                  Verwenden Sie die gleiche ID für KI- und manuelle Berichte desselben Falls
+                </p>
               </div>
             </div>
           ) : (

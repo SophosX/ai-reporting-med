@@ -1,3 +1,34 @@
+/**
+ * @fileoverview TemplatesPage - Verwaltung aller Befund-Templates.
+ *
+ * Diese Seite ermöglicht die vollständige Verwaltung von Templates
+ * für die radiologische Befundung. Sie unterscheidet zwischen
+ * Benutzer-Templates und Standard-Templates.
+ *
+ * Template-Typen:
+ * - Meine Templates: Vom Benutzer erstellte oder importierte Templates
+ * - Standard-Templates: Vordefinierte System-Templates (können überschrieben werden)
+ * - Überschriebene Standard-Templates: Mit blauem Rand markiert
+ *
+ * Features:
+ * - Neues Template erstellen (manuell oder JSON-Import)
+ * - Templates bearbeiten mit Markdown-Editor (MDEditor)
+ * - Templates löschen (mit Bestätigung)
+ * - JSON-Export (einzeln oder mehrere)
+ * - JSON-Import (einzeln oder mehrere)
+ * - Beispiel-JSON-Download für Importformat
+ * - Auswahl-Modus für Bulk-Export
+ * - Alle erweitern/zuklappen
+ * - Admin-Funktion: Templates global auf alle Nutzer anwenden
+ *
+ * State-Komplexität:
+ * - isCreating: Template-Erstellungs-Modus aktiv
+ * - isEditing: ID des gerade bearbeiteten Templates
+ * - selectionMode: Bulk-Auswahl-Modus aktiv
+ * - selectedTemplates: Set der ausgewählten Template-IDs
+ * - expandedTemplates: Set der ausgeklappten Template-IDs
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   FaArrowRight,
@@ -21,6 +52,7 @@ import {
   FaSquare,
   FaFileExport,
   FaTimes,
+  FaGlobe,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useTemplate } from "../context/TemplateContext";
@@ -40,7 +72,17 @@ import {
 } from "../utils/templateService";
 import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
+import API_URL from "../utils/apiConfig";
+import { authenticatedFetch } from "../utils/auth";
 
+/**
+ * Vollständige Template-Verwaltungsseite mit CRUD-Operationen.
+ *
+ * Nutzt TemplateContext für die zentrale Template-Verwaltung.
+ * Die Seite ist komplex mit mehreren Modi (Erstellen, Bearbeiten, Auswahl).
+ *
+ * @returns {JSX.Element} Die gerenderte Template-Verwaltungsseite
+ */
 function TemplatesPage() {
   const {
     selectedTemplateId,
@@ -79,6 +121,23 @@ function TemplatesPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTemplates, setSelectedTemplates] = useState(new Set());
   const [isExporting, setIsExporting] = useState(false);
+
+  // Admin state
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isMigratingTemplates, setIsMigratingTemplates] = useState(false);
+
+  // Check if user is admin (newmhayawi)
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setIsAdmin(user.username === "newmhayawi");
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+  }, []);
 
   // Load templates when component mounts
   useEffect(() => {
@@ -531,6 +590,44 @@ function TemplatesPage() {
     }
   };
 
+  // Admin function: Migrate templates globally
+  const handleMigrateTemplatesGlobal = async () => {
+    const confirmMigration = window.confirm(
+      "Sind Sie sicher, dass Sie Ihre Templates global auf alle Nutzer anwenden möchten?\n\n" +
+      "WARNUNG: Dies überschreibt bestehende Templates aller anderen Nutzer mit den gleichen Titeln!"
+    );
+
+    if (!confirmMigration) {
+      return;
+    }
+
+    setIsMigratingTemplates(true);
+    try {
+      const response = await authenticatedFetch(
+        `${API_URL}/admin/migrate-templates-global`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Migration fehlgeschlagen");
+      }
+
+      const result = await response.json();
+      toast.success(
+        `Templates erfolgreich migriert!\n` +
+        `${result.templates_created} erstellt, ${result.templates_updated} aktualisiert`
+      );
+    } catch (error) {
+      console.error("Migration error:", error);
+      toast.error(`Fehler bei der Migration: ${error.message}`);
+    } finally {
+      setIsMigratingTemplates(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-8 text-white text-center">
@@ -601,6 +698,20 @@ function TemplatesPage() {
               >
                 <span className="whitespace-nowrap">Neues Template</span>
               </button>
+              {/* Admin Button - Only visible for newmhayawi */}
+              {isAdmin && (
+                <button
+                  onClick={handleMigrateTemplatesGlobal}
+                  disabled={isMigratingTemplates}
+                  className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white py-2 px-3 sm:px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-red-500/25 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Templates global auf alle Nutzer anwenden"
+                >
+                  <FaGlobe className="text-sm" />
+                  <span className="whitespace-nowrap">
+                    {isMigratingTemplates ? "Migriere..." : "Global anwenden"}
+                  </span>
+                </button>
+              )}
             </>
           )}
         </div>

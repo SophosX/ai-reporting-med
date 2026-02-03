@@ -1,3 +1,21 @@
+/**
+ * @fileoverview WordCountMetrics-Komponente - Visualisierung von Wort-Effizienz-Metriken.
+ *
+ * Diese Komponente zeigt die Wortzahl-Statistiken eines einzelnen Berichts,
+ * um die Effizienz der KI-gestützten Berichterstellung zu demonstrieren.
+ *
+ * Angezeigte Metriken:
+ * - Eingabewörter: Vom Radiologen eingegebene Stichpunkte
+ * - KI-generiert: Von der KI erzeugter Befundtext
+ * - Finaler Bericht: Text nach manueller Bearbeitung
+ * - Gesparte Wörter: Differenz zwischen Eingabe und finalem Text
+ *
+ * Display-Modi:
+ * - compact: Einzeilige Icon-Darstellung mit Tooltips
+ * - normal: Vierspaltiges Grid mit Labels und Erklärungen
+ * - detailed: Mit Effizienz-Insights und Berechnungsformeln
+ */
+
 import React from "react";
 import {
   FaChartLine,
@@ -13,6 +31,36 @@ import {
   getEfficiencyColor,
 } from "../utils/wordCount";
 
+/**
+ * Komponente zur Visualisierung von Wort-Effizienz-Metriken eines Berichts.
+ *
+ * Berechnet und zeigt Wortzahl-Statistiken basierend auf den Report-Feldern:
+ * - input_word_count: Wörter im Eingabetext
+ * - generated_word_count: Wörter im KI-generierten Text
+ * - word_count: Wörter im finalen (ggf. bearbeiteten) Bericht
+ *
+ * @param {Object} props - Komponenten-Props
+ * @param {Object} props.report - Das Bericht-Objekt mit Wortzahl-Feldern
+ * @param {number} props.report.input_word_count - Wörter im Eingabetext
+ * @param {number} props.report.generated_word_count - Wörter im KI-Text
+ * @param {number} props.report.word_count - Wörter im finalen Bericht
+ * @param {boolean} [props.showLabels=true] - Zeigt Beschriftungen unter den Werten
+ * @param {boolean} [props.compact=false] - Kompakte einzeilige Darstellung
+ * @param {boolean} [props.showDescriptions=false] - Zeigt detaillierte Insights
+ * @returns {JSX.Element} Die gerenderten Metriken
+ *
+ * @example
+ * // Normale Darstellung in ReportCard
+ * <WordCountMetrics report={report} showLabels={true} />
+ *
+ * @example
+ * // Kompakte Darstellung in Listen
+ * <WordCountMetrics report={report} compact={true} />
+ *
+ * @example
+ * // Detailansicht mit Effizienz-Insights
+ * <WordCountMetrics report={report} showDescriptions={true} />
+ */
 const WordCountMetrics = ({
   report,
   showLabels = true,

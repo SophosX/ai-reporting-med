@@ -1,3 +1,31 @@
+/**
+ * @fileoverview NewReportPage - KI-gestützte Berichterstellung.
+ *
+ * Diese Seite ist das Kernstück der Anwendung - hier werden Befundberichte
+ * mit KI-Unterstützung erstellt. Sie unterstützt sowohl normalen Betrieb
+ * als auch den Studienmodus mit Timer-Tracking.
+ *
+ * Workflow:
+ * 1. Benutzer gibt Stichpunkte/Diktat in Textarea ein
+ * 2. Optional: Template und/oder Custom Prompt auswählen
+ * 3. "Generiere Bericht" sendet Anfrage an KI
+ * 4. Generierter Bericht wird als Markdown-Preview angezeigt
+ * 5. Nach 1.5s Weiterleitung zur ReportDetailPage
+ *
+ * Studienmodus (wenn aktiv):
+ * 1. Template-Auswahl löst StudyTimerModal aus
+ * 2. Benutzer gibt Fall-ID ein und startet Timer
+ * 3. StudyTimerBar erscheint am oberen Bildschirmrand
+ * 4. Timer läuft während der gesamten Berichterstellung
+ * 5. Abschluss erfolgt auf der ReportDetailPage
+ *
+ * Features:
+ * - Custom Prompt: Benutzerdefinierter System-Prompt für die KI
+ * - Template-Auswahl mit React-Select (gruppiert nach Meine/Standard)
+ * - Markdown-Editor für den generierten Bericht
+ * - Studien-Integration mit Timer und Fall-ID
+ */
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -27,6 +55,15 @@ import StudyTimerModal from "../components/StudyTimerModal";
 import { authenticatedFetch } from "../utils/auth";
 import { useStudy } from "../context/StudyContext";
 
+/**
+ * Haupt-Seite für die KI-gestützte Berichterstellung.
+ *
+ * Integriert TemplateContext für Template-Auswahl und StudyContext
+ * für das Studien-Tracking. Der generierte Bericht wird automatisch
+ * in der Datenbank gespeichert.
+ *
+ * @returns {JSX.Element} Die gerenderte Berichterstellungs-Seite
+ */
 function NewReportPage() {
   const navigate = useNavigate();
   const {

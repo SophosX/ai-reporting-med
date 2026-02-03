@@ -1,3 +1,19 @@
+"""
+User Templates Router - API-Endpoints für benutzerdefinierte Templates.
+
+Dieses Modul enthält CRUD-Operationen für Benutzer-Templates:
+- POST /user-templates/: Neues Template erstellen
+- GET /user-templates/: Alle eigenen Templates abrufen
+- GET /user-templates/{id}/: Einzelnes Template abrufen
+- PUT /user-templates/{id}/: Template aktualisieren
+- DELETE /user-templates/{id}/: Template löschen
+
+Besonderheiten:
+- Unterstützt Import von Templates aus JSON-Dateien
+- Generiert automatisch eindeutige Template-IDs
+- Templates haben immer das Präfix "user-{user_id}-"
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -12,24 +28,63 @@ import time
 
 router = APIRouter()
 
-def slugify(text):
-    """Convert a title to a safe template_id slug format."""
+
+def slugify(text: str) -> str:
+    """
+    Konvertiert einen Titel in ein URL-sicheres Slug-Format.
+
+    Wird verwendet, um aus dem Template-Titel eine eindeutige,
+    URL-sichere Template-ID zu generieren.
+
+    Transformationen:
+    - Kleinschreibung
+    - Entfernung von Sonderzeichen
+    - Ersetzung von Leerzeichen durch Bindestriche
+    - Entfernung führender/nachfolgender Bindestriche
+
+    Args:
+        text (str): Der zu konvertierende Titel
+
+    Returns:
+        str: URL-sicheres Slug
+
+    Beispiel:
+        slugify("CT Thorax Standard!") -> "ct-thorax-standard"
+    """
     text = text.lower()
-    text = re.sub(r'[^\w\s-]', '', text)
-    text = re.sub(r'[\s_-]+', '-', text)
-    text = re.sub(r'^-+|-+$', '', text)
+    text = re.sub(r'[^\w\s-]', '', text)  # Sonderzeichen entfernen
+    text = re.sub(r'[\s_-]+', '-', text)  # Whitespace/Unterstriche zu Bindestrichen
+    text = re.sub(r'^-+|-+$', '', text)  # Führende/nachfolgende Bindestriche entfernen
     return text
 
-def generate_unique_template_id(user_id: int, title: str, is_import: bool = False):
-    """Generate a unique template ID, with special handling for imports."""
+
+def generate_unique_template_id(user_id: int, title: str, is_import: bool = False) -> str:
+    """
+    Generiert eine eindeutige Template-ID für einen Benutzer.
+
+    Bei manueller Erstellung wird ein deterministisches Format verwendet.
+    Bei Importen wird ein UUID-Suffix hinzugefügt, um Duplikate zu vermeiden.
+
+    Args:
+        user_id (int): ID des Benutzers
+        title (str): Titel des Templates
+        is_import (bool): True wenn das Template importiert wird
+
+    Returns:
+        str: Eindeutige Template-ID
+
+    Beispiele:
+        - Manuell: "user-5-ct-thorax-custom"
+        - Import: "user-5-ct-thorax-custom-a1b2c3d4"
+    """
     base_slug = slugify(title)
-    
+
     if is_import:
-        # For imports, use a UUID suffix to ensure uniqueness
+        # Bei Importen UUID-Suffix für Eindeutigkeit
         unique_suffix = str(uuid.uuid4())[:8]
         return f"user-{user_id}-{base_slug}-{unique_suffix}"
     else:
-        # For manual creation, use the standard format
+        # Bei manueller Erstellung: Standard-Format
         return f"user-{user_id}-{base_slug}"
 
 @router.post("/", response_model=UserTemplateOut)
@@ -39,7 +94,30 @@ async def create_template(
     current_user_id: int = Depends(get_current_user_id),
     from_import: bool = Query(False, description="Indicates if this template is being imported from JSON")
 ):
-    """Create a new user template."""
+    """
+    Erstellt ein neues benutzerdefiniertes Template.
+
+    Unterstützt sowohl manuelle Erstellung als auch JSON-Import.
+    Bei Importen werden bei Namenskonflikten automatisch neue IDs generiert.
+
+    Template-ID-Generierung:
+    - Wenn keine ID angegeben: Automatisch aus Titel generiert
+    - Wenn ID angegeben aber ohne "user-" Präfix: Präfix wird hinzugefügt
+    - Bei Import: UUID-Suffix bei Konflikten
+
+    Args:
+        template_data (UserTemplateCreate): Template-Daten (Titel, Text, etc.)
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+        from_import (bool): True bei JSON-Import (aktiviert Konfliktlösung)
+
+    Returns:
+        UserTemplateOut: Das erstellte Template
+
+    Raises:
+        HTTPException (400): Bei doppelter Template-ID oder Erstellungsfehler
+        HTTPException (500): Bei unerwarteten Fehlern
+    """
     
     template_data_dict = template_data.dict()
     
@@ -113,7 +191,19 @@ async def get_user_templates(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Get all templates for the current user."""
+    """
+    Ruft alle benutzerdefinierten Templates des aktuellen Benutzers ab.
+
+    Gibt nur Templates zurück, die vom Benutzer selbst erstellt wurden.
+    System-Templates werden über den /templates/ Endpoint abgerufen.
+
+    Args:
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        List[UserTemplateOut]: Liste aller Benutzer-Templates
+    """
     templates = db.query(UserTemplate).filter(UserTemplate.user_id == current_user_id).all()
     return templates
 
@@ -123,7 +213,22 @@ async def get_template(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Get a specific template by ID."""
+    """
+    Ruft ein einzelnes Benutzer-Template nach Datenbank-ID ab.
+
+    HINWEIS: Verwendet die numerische Datenbank-ID, nicht die template_id-String.
+
+    Args:
+        template_id (int): Datenbank-ID des Templates
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        UserTemplateOut: Das angeforderte Template
+
+    Raises:
+        HTTPException (404): Wenn Template nicht existiert oder anderem Benutzer gehört
+    """
     template = db.query(UserTemplate).filter(
         UserTemplate.id == template_id,
         UserTemplate.user_id == current_user_id
@@ -141,7 +246,24 @@ async def update_template(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Update a template."""
+    """
+    Aktualisiert ein bestehendes Benutzer-Template.
+
+    Ermöglicht das Ändern von Titel und/oder Text. Nur angegebene
+    Felder werden aktualisiert (Partial Update).
+
+    Args:
+        template_id (int): Datenbank-ID des Templates
+        template_data (UserTemplateUpdate): Neue Werte (title und/oder text)
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        UserTemplateOut: Das aktualisierte Template
+
+    Raises:
+        HTTPException (404): Wenn Template nicht existiert oder anderem Benutzer gehört
+    """
     template = db.query(UserTemplate).filter(
         UserTemplate.id == template_id,
         UserTemplate.user_id == current_user_id
@@ -167,7 +289,22 @@ async def delete_template(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """Delete a template."""
+    """
+    Löscht ein Benutzer-Template dauerhaft.
+
+    WARNUNG: Diese Aktion kann nicht rückgängig gemacht werden!
+
+    Args:
+        template_id (int): Datenbank-ID des zu löschenden Templates
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        None (HTTP 204 No Content)
+
+    Raises:
+        HTTPException (404): Wenn Template nicht existiert oder anderem Benutzer gehört
+    """
     template = db.query(UserTemplate).filter(
         UserTemplate.id == template_id,
         UserTemplate.user_id == current_user_id

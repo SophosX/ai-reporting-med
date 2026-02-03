@@ -1,9 +1,35 @@
+/**
+ * @fileoverview RegisterPage - Eigenständige Registrierungsseite.
+ *
+ * Diese Seite ermöglicht die Erstellung neuer Benutzerkonten.
+ * Sie wird als Alternative zur integrierten Registrierung in LoginPage verwendet.
+ *
+ * Features:
+ * - Vollständige Formularvalidierung (Client-seitig)
+ * - Username-Validierung (alphanumerisch + Bindestriche)
+ * - Email-Format-Validierung
+ * - Passwort-Bestätigung
+ * - Optionale Studienteilnahme mit Token-Validierung
+ * - Erfahrungslevel-Auswahl für Studienteilnehmer
+ * - Loading-States während der Registrierung
+ *
+ * Studienteilnehmer-Felder (nur wenn Checkbox aktiviert):
+ * - study_token: Einladungs-Token (wird automatisch in Großbuchstaben umgewandelt)
+ * - full_name: Vollständiger Name des Arztes
+ * - experience_level: Assistenzarzt | Facharzt | Oberarzt
+ */
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FaInfoCircle, FaFlask, FaUser, FaBriefcase } from "react-icons/fa";
 import API_URL from "../utils/apiConfig";
 
+/**
+ * Standalone-Registrierungsseite mit Studien-Unterstützung.
+ *
+ * @returns {JSX.Element} Die gerenderte Registrierungsseite
+ */
 function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");

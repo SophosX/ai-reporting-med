@@ -1,8 +1,39 @@
+/**
+ * @fileoverview StudyDataFixPage - Synchronisiert lokale Benutzerdaten.
+ *
+ * Diese Utility-Seite synchronisiert die im localStorage gespeicherten
+ * Benutzerdaten mit dem Backend. Sie wird verwendet, wenn die lokalen
+ * Daten veraltet sind (z.B. nach einem Backend-Update oder wenn der
+ * Studienteilnehmer-Status geändert wurde).
+ *
+ * Workflow:
+ * 1. Seite wird geladen (z.B. via /study/fix-data Route)
+ * 2. API-Aufruf zu /study/study-mode/status
+ * 3. localStorage "user" wird mit aktuellen Daten aktualisiert
+ * 4. Nach 1 Sekunde Weiterleitung zur HomePage mit page reload
+ *
+ * Aktualisierte Felder:
+ * - study_participant: Boolean ob Studienteilnehmer
+ * - study_mode_active: Boolean ob Studienmodus aktiv
+ * - experience_level: Erfahrungsstufe (assistenzarzt/facharzt/oberarzt)
+ * - full_name: Vollständiger Name
+ *
+ * Die Seite zeigt nur einen Lade-Spinner und wird nicht interaktiv verwendet.
+ */
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
 
+/**
+ * Utility-Seite zur Synchronisierung der lokalen Benutzerdaten.
+ *
+ * Zeigt einen Lade-Spinner und leitet nach erfolgreicher Synchronisation
+ * automatisch zur HomePage weiter.
+ *
+ * @returns {JSX.Element} Lade-Spinner oder Weiterleitungs-Nachricht
+ */
 function StudyDataFixPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);

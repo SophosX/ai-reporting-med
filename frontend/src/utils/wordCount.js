@@ -1,11 +1,40 @@
 /**
- * Utility functions for calculating word counts in radiology reports
+ * @fileoverview wordCount - Wortzähl-Utilities für Effizienz-Metriken.
+ *
+ * Dieses Modul berechnet verschiedene Wortzahl-Metriken für die
+ * Analyse der KI-gestützten Berichterstellung. Es ermöglicht den
+ * Vergleich zwischen Eingabe, KI-Generierung und finalem Bericht.
+ *
+ * Metriken-Konzept:
+ * - inputWords: Vom Radiologen eingegebene Stichpunkte
+ * - aiGeneratedWords: Von der KI erzeugter Text
+ * - finalWords: Der finale Bericht (nach Bearbeitung)
+ * - savedWords: Effizienz (finalWords - inputWords)
+ *
+ * Die Metriken zeigen, wie viel Text die KI aus wenig Eingabe generiert
+ * und wie viel der Benutzer noch bearbeitet hat.
+ *
+ * Beispiel:
+ * Input: 20 Wörter → KI generiert: 150 Wörter → Final: 145 Wörter
+ * Ersparnis: 125 Wörter (145 - 20)
+ *
+ * @see WordCountMetrics-Komponente für UI-Darstellung
+ * @see OverallWordCountStats für aggregierte Statistiken
  */
 
 /**
- * Count words in a text, handling empty/null values
- * @param {string} text - Text to count words in
- * @returns {number} - Word count
+ * Zählt die Wörter in einem Text.
+ *
+ * Entfernt Markdown-Formatierung und normalisiert Whitespace
+ * vor dem Zählen. Behandelt null/undefined sicher.
+ *
+ * @param {string} text - Der zu zählende Text
+ * @returns {number} Anzahl der Wörter (0 bei leerem Text)
+ *
+ * @example
+ * countWords("Hallo Welt") // → 2
+ * countWords("**Fett** und _kursiv_") // → 3
+ * countWords(null) // → 0
  */
 export const countWords = (text) => {
   if (!text || typeof text !== "string") return 0;

@@ -1,8 +1,40 @@
-// Authentication utilities
+/**
+ * @fileoverview auth - Zentrale Authentifizierungs-Utilities.
+ *
+ * Dieses Modul stellt alle Funktionen für die Benutzer-Authentifizierung
+ * bereit. Es verwaltet JWT-Tokens im localStorage und bietet einen
+ * authentifizierten Fetch-Wrapper für API-Aufrufe.
+ *
+ * Token-Struktur (JWT):
+ * - Header: Algorithmus (HS256)
+ * - Payload: user_id, exp (Ablaufzeit), iat (Erstellzeit)
+ * - Signature: Mit SECRET_KEY signiert
+ *
+ * localStorage-Keys:
+ * - "token": JWT-Token für API-Authentifizierung
+ * - "user_id": Benutzer-ID (redundant, auch im Token)
+ * - "user": Vollständiges User-Objekt mit allen Details
+ *
+ * Sicherheitshinweise:
+ * - Token wird Client-seitig nicht validiert (nur Ablauf geprüft)
+ * - Bei 401-Antworten wird automatisch ausgeloggt und weitergeleitet
+ * - isRedirecting-Flag verhindert mehrfache Weiterleitungen
+ */
 
 /**
- * Checks if the token is present and not expired
- * @returns {boolean} Whether the user is authenticated
+ * Prüft ob ein gültiger (nicht abgelaufener) Token vorhanden ist.
+ *
+ * Dekodiert den JWT-Token und prüft das exp-Feld gegen die aktuelle Zeit.
+ * Bei abgelaufenem Token wird automatisch logout() aufgerufen.
+ *
+ * @returns {boolean} True wenn authentifiziert und Token gültig
+ *
+ * @example
+ * if (isAuthenticated()) {
+ *   fetchUserData();
+ * } else {
+ *   redirectToLogin();
+ * }
  */
 export const isAuthenticated = () => {
   const token = localStorage.getItem("token");
@@ -31,7 +63,15 @@ export const isAuthenticated = () => {
 };
 
 /**
- * Logs out the user by removing the token and user_id from localStorage
+ * Meldet den Benutzer ab und löscht alle Auth-Daten aus localStorage.
+ *
+ * Entfernt token, user_id und user-Objekt aus dem localStorage.
+ * Führt keine Navigation durch - das muss der Aufrufer übernehmen.
+ *
+ * @example
+ * // In einem Logout-Button-Handler
+ * logout();
+ * navigate("/login");
  */
 export const logout = () => {
   localStorage.removeItem("token");
@@ -39,14 +79,38 @@ export const logout = () => {
   localStorage.removeItem("user");
 };
 
-// To prevent multiple session expired messages
+/**
+ * Flag zur Vermeidung mehrfacher Weiterleitungen bei Session-Ablauf.
+ * Wird auf true gesetzt wenn eine 401-Weiterleitung läuft.
+ * @type {boolean}
+ */
 let isRedirecting = false;
 
 /**
- * Makes an authenticated API request, handling token expiration
- * @param {string} url - API endpoint URL
- * @param {Object} options - Fetch options
- * @returns {Promise} - Fetch response
+ * Führt einen authentifizierten API-Request durch.
+ *
+ * Fügt automatisch den Authorization-Header mit dem JWT-Token hinzu.
+ * Bei 401-Antworten (Unauthorized) wird:
+ * 1. logout() aufgerufen
+ * 2. Einmalig zur Login-Seite weitergeleitet
+ * 3. Ein Fehler geworfen
+ *
+ * @param {string} url - Vollständige API-URL
+ * @param {Object} [options={}] - Fetch-Optionen (method, body, etc.)
+ * @returns {Promise<Response>} Die Fetch-Response
+ * @throws {Error} Bei fehlendem Token oder Authentifizierungsfehler
+ *
+ * @example
+ * // GET Request
+ * const response = await authenticatedFetch(`${API_URL}/reports/`);
+ * const data = await response.json();
+ *
+ * @example
+ * // POST Request
+ * const response = await authenticatedFetch(`${API_URL}/reports/`, {
+ *   method: "POST",
+ *   body: JSON.stringify({ input_text: "..." })
+ * });
  */
 export const authenticatedFetch = async (url, options = {}) => {
   const token = localStorage.getItem("token");
@@ -87,8 +151,20 @@ export const authenticatedFetch = async (url, options = {}) => {
 };
 
 /**
- * Gets the current user information from localStorage
- * @returns {Object|null} User object with id or null if not authenticated
+ * Gibt die aktuellen Benutzerinformationen aus localStorage zurück.
+ *
+ * Prüft zusätzlich ob der Benutzer noch authentifiziert ist
+ * (Token nicht abgelaufen) bevor Daten zurückgegeben werden.
+ *
+ * @returns {Object|null} Benutzerobjekt oder null wenn nicht authentifiziert
+ * @property {string} id - Die Benutzer-ID
+ * @property {string} token - Der JWT-Token
+ *
+ * @example
+ * const user = getCurrentUser();
+ * if (user) {
+ *   console.log(`Benutzer-ID: ${user.id}`);
+ * }
  */
 export const getCurrentUser = () => {
   const token = localStorage.getItem("token");

@@ -1,3 +1,27 @@
+/**
+ * @fileoverview QualityAssessmentDialog-Komponente - Selbstbewertung für Studien.
+ *
+ * Diese Komponente zeigt einen Dialog zur Qualitätsbewertung nach
+ * Abschluss einer Studien-Session. Der Benutzer bewertet die Qualität
+ * des generierten Berichts auf einer 5-Sterne-Skala.
+ *
+ * Bewertungsskala:
+ * 1 Stern: Sehr schlecht - Viele Fehler, unvollständig
+ * 2 Sterne: Schlecht - Einige wesentliche Fehler
+ * 3 Sterne: Mittelmäßig - Akzeptabel mit kleinen Fehlern
+ * 4 Sterne: Gut - Wenige geringfügige Fehler
+ * 5 Sterne: Sehr gut - Fehlerfrei und vollständig
+ *
+ * Die Bewertung wird als self_assessment_quality im Backend gespeichert
+ * und dient der subjektiven Qualitätseinschätzung durch den Radiologen.
+ *
+ * Bewertungskriterien (angezeigt im Dialog):
+ * - Vollständigkeit der Befundung
+ * - Korrekte medizinische Terminologie
+ * - Strukturierung und Lesbarkeit
+ * - Zeitersparnis gegenüber manueller Erstellung
+ */
+
 import React, { useState } from "react";
 import {
   FaCheckCircle,
@@ -6,6 +30,29 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 
+/**
+ * Dialog-Komponente zur Erfassung der Qualitätsbewertung.
+ *
+ * Wird nach Abschluss einer Studien-Session angezeigt und erfordert
+ * eine Bewertung bevor die Session vollständig abgeschlossen werden kann.
+ *
+ * Die Bewertung erfolgt über ein interaktives 5-Sterne-Rating mit
+ * Hover-Effekt und Beschreibungstext für jede Stufe.
+ *
+ * @param {Object} props - Komponenten-Props
+ * @param {boolean} props.isOpen - Steuert Sichtbarkeit des Dialogs
+ * @param {Function} props.onSubmit - Callback bei Bewertungsabgabe
+ * @param {number} props.onSubmit.rating - Die ausgewählte Bewertung (1-5)
+ * @param {Function} props.onCancel - Callback zum Abbrechen/Schließen
+ * @returns {JSX.Element|null} Der Dialog oder null wenn nicht offen
+ *
+ * @example
+ * <QualityAssessmentDialog
+ *   isOpen={showQualityDialog}
+ *   onSubmit={(rating) => completeSessionWithRating(rating)}
+ *   onCancel={() => setShowQualityDialog(false)}
+ * />
+ */
 function QualityAssessmentDialog({ isOpen, onSubmit, onCancel }) {
   const [selectedQuality, setSelectedQuality] = useState(0);
   const [hoveredQuality, setHoveredQuality] = useState(0);

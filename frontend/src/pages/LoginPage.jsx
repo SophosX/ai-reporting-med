@@ -1,9 +1,35 @@
+/**
+ * @fileoverview LoginPage - Authentifizierungs-Seite mit Login und Registrierung.
+ *
+ * Diese Seite bietet zwei Tab-Ansichten:
+ * - Anmelden: Login mit Email/Username und Passwort
+ * - Registrieren: Neuen Account erstellen mit optionaler Studienteilnahme
+ *
+ * Features:
+ * - Flexible Login-Identifizierung (Email ODER Username)
+ * - Optionale Studienteilnahme bei Registrierung
+ * - Studien-Token-Validierung
+ * - Erfahrungslevel-Auswahl (Assistenzarzt/Facharzt/Oberarzt)
+ * - Client-seitige Validierung mit Fehlermeldungen
+ * - Automatisches Wechseln zum Login-Tab nach erfolgreicher Registrierung
+ *
+ * Nach erfolgreichem Login werden in localStorage gespeichert:
+ * - token: JWT-Token für API-Authentifizierung
+ * - user_id: Benutzer-ID
+ * - user: Vollständiges User-Objekt mit Study-Status
+ */
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FaFlask, FaInfoCircle, FaUser, FaBriefcase } from "react-icons/fa";
 import API_URL from "../utils/apiConfig";
 
+/**
+ * Kombinierte Login/Registrierungs-Seite mit Tab-Navigation.
+ *
+ * @returns {JSX.Element} Die gerenderte Login/Register-Seite
+ */
 function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [identifier, setIdentifier] = useState(""); // Hier kann Email oder Username eingegeben werden

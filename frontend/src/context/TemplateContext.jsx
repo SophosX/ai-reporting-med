@@ -1,12 +1,56 @@
+/**
+ * @fileoverview TemplateContext - Globaler State für Templates.
+ *
+ * Dieser Context verwaltet den globalen Template-Zustand der Anwendung.
+ * Er ermöglicht das Teilen von Templates zwischen verschiedenen Komponenten
+ * ohne Prop-Drilling.
+ *
+ * Features:
+ * - Lazy Loading: Templates werden erst bei Bedarf geladen
+ * - Caching: Einmal geladene Templates bleiben im State
+ * - Authentifizierungs-Check: Keine API-Aufrufe ohne Login
+ * - Fehlerbehandlung: Mit Toast-Benachrichtigungen
+ *
+ * State-Werte:
+ * - selectedTemplateId: Das aktuell ausgewählte Template
+ * - templates: Array aller geladenen Templates
+ * - loading: Boolean während des Ladens
+ * - error: Fehlermeldung falls Laden fehlschlägt
+ * - initialized: True nach erstem erfolgreichen Laden
+ *
+ * Verwendung:
+ * ```jsx
+ * // In App.jsx
+ * <TemplateProvider>
+ *   <App />
+ * </TemplateProvider>
+ *
+ * // In einer Komponente
+ * const { templates, loadTemplates, selectedTemplateId } = useTemplate();
+ * ```
+ */
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { fetchAllTemplates } from "../utils/templateService";
 import { toast } from "react-toastify";
 import { isAuthenticated } from "../utils/auth";
 
-// Create the context
+/**
+ * React Context für Template-State.
+ * @type {React.Context}
+ */
 const TemplateContext = createContext();
 
-// Create a provider component
+/**
+ * Provider-Komponente für den Template-Context.
+ *
+ * Wrapt die Anwendung und stellt den Template-State allen
+ * Kind-Komponenten zur Verfügung.
+ *
+ * @param {Object} props - Komponenten-Props
+ * @param {React.ReactNode} props.children - Kind-Komponenten
+ * @returns {JSX.Element} Der Context-Provider mit Kindern
+ */
 export const TemplateProvider = ({ children }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [templates, setTemplates] = useState([]);
@@ -77,7 +121,26 @@ export const TemplateProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use the context
+/**
+ * Custom Hook für den Zugriff auf den Template-Context.
+ *
+ * Muss innerhalb eines TemplateProvider verwendet werden.
+ *
+ * @returns {Object} Der Template-Context mit allen State-Werten und Funktionen
+ * @property {string} selectedTemplateId - ID des ausgewählten Templates
+ * @property {Function} setSelectedTemplateId - Setter für selectedTemplateId
+ * @property {Array} templates - Array aller Templates
+ * @property {Function} setTemplates - Setter für templates (für direkte Updates)
+ * @property {boolean} loading - True während Templates geladen werden
+ * @property {string|null} error - Fehlermeldung oder null
+ * @property {Function} refreshTemplates - Erzwingt Neuladen der Templates
+ * @property {Function} loadTemplates - Lädt Templates (mit Cache-Check)
+ * @property {boolean} initialized - True nach erstem Laden
+ * @throws {Error} Wenn außerhalb eines TemplateProvider verwendet
+ *
+ * @example
+ * const { templates, selectedTemplateId, setSelectedTemplateId } = useTemplate();
+ */
 export const useTemplate = () => {
   const context = useContext(TemplateContext);
   if (context === undefined) {

@@ -1,3 +1,25 @@
+"""
+Study Router - API-Endpoints für wissenschaftliche Studien-Sessions.
+
+Dieses Modul enthält alle Endpoints für die wissenschaftliche Studie:
+
+Studienmodus:
+- POST /study/study-mode/toggle: Studienmodus aktivieren/deaktivieren
+- GET /study/study-mode/status: Aktuellen Studienmodus-Status abrufen
+
+Session-Management:
+- POST /study/study-session/start: Neue Studien-Session starten
+- POST /study/study-session/{id}/timer-start: Timer starten
+- POST /study/study-session/{id}/complete: Session mit Metriken abschließen
+
+Datenexport:
+- GET /study/study-data/export: Eigene Studiendaten exportieren
+- GET /study/study-data/export-all: Alle Studiendaten exportieren (Admin)
+
+Die Studie vergleicht KI-gestützte Befunderstellung ("with_ai") mit
+manueller Befunderstellung ("without_ai") anhand verschiedener Metriken.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional, Union
@@ -12,16 +34,33 @@ from ..core.config import settings
 
 router = APIRouter()
 
-# Copy of get_current_user function
+
 async def get_current_user(
     authorization: str = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
+    """
+    Authentifiziert einen Benutzer anhand des Authorization-Headers.
+
+    Diese Hilfsfunktion extrahiert und validiert den JWT-Token aus dem
+    Bearer-Authorization-Header und gibt das entsprechende User-Objekt zurück.
+
+    Args:
+        authorization (str): Authorization-Header ("Bearer <token>")
+        db (Session): Datenbank-Session
+
+    Returns:
+        User: Das authentifizierte User-Objekt
+
+    Raises:
+        HTTPException (401): Bei fehlendem oder ungültigem Token
+        HTTPException (404): Wenn der Benutzer nicht existiert
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Nicht authentifiziert")
-    
+
     token = authorization.split(" ")[1]
-    
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: int = int(payload.get("sub"))
@@ -29,11 +68,11 @@ async def get_current_user(
             raise HTTPException(status_code=401, detail="Ungültiges Token")
     except (JWTError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
-    
+
     return user
 
 @router.post("/study-mode/toggle")
@@ -42,7 +81,24 @@ async def toggle_study_mode(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Toggle study mode on/off for a user"""
+    """
+    Aktiviert oder deaktiviert den Studienmodus für einen Benutzer.
+
+    Im Studienmodus werden zusätzliche Metriken erfasst und der Benutzer
+    kann Studien-Sessions starten. Nur Studienteilnehmer können den
+    Studienmodus verwenden.
+
+    Args:
+        toggle_data (StudyModeToggle): {"study_mode_active": true/false}
+        current_user (User): Der authentifizierte Benutzer
+        db (Session): Datenbank-Session
+
+    Returns:
+        dict: Neuer Status und Bestätigungsmeldung
+
+    Raises:
+        HTTPException (403): Wenn der Benutzer kein Studienteilnehmer ist
+    """
     if not current_user.study_participant:
         raise HTTPException(
             status_code=403,
@@ -62,7 +118,16 @@ async def get_study_mode_status(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get current study mode status"""
+    """
+    Gibt den aktuellen Studienmodus-Status des Benutzers zurück.
+
+    Returns:
+        dict: Status-Informationen
+            - study_participant: Ist der Benutzer Studienteilnehmer?
+            - study_mode_active: Ist der Studienmodus aktiviert?
+            - experience_level: Erfahrungsstufe des Arztes
+            - full_name: Vollständiger Name
+    """
     return {
         "study_participant": current_user.study_participant,
         "study_mode_active": current_user.study_mode_active,
@@ -71,9 +136,17 @@ async def get_study_mode_status(
     }
 
 class StudySessionStart(BaseModel):
+    """
+    Pydantic-Model für den Start einer Studien-Session.
+
+    Attributes:
+        template_id: ID des verwendeten Templates (optional)
+        case_id: Vom Arzt vergebene Fall-ID für Paarung von KI/Manual-Sessions
+        session_type: Art der Session ('with_ai' oder 'without_ai')
+    """
     template_id: Optional[Union[int, str]] = None
     case_id: Optional[str] = None
-    session_type: Optional[str] = "with_ai"  # 'with_ai' or 'without_ai'
+    session_type: Optional[str] = "with_ai"  # 'with_ai' oder 'without_ai'
 
 @router.post("/study-session/start")
 async def start_study_session(
@@ -81,7 +154,25 @@ async def start_study_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Start a new study session for a report (with or without AI)"""
+    """
+    Startet eine neue Studien-Session für die Befunderstellung.
+
+    Eine Session erfasst alle Metriken während der Befunderstellung:
+    - Zeitstempel (Start, Timer-Start, Ende)
+    - Session-Typ (mit oder ohne KI)
+    - Fall-ID für Paarung von Vergleichsbefunden
+
+    Args:
+        data (StudySessionStart): Session-Konfiguration
+        current_user (User): Der authentifizierte Benutzer
+        db (Session): Datenbank-Session
+
+    Returns:
+        dict: Session-ID und Startzeit
+
+    Raises:
+        HTTPException (403): Wenn der Studienmodus nicht aktiv ist
+    """
     if not current_user.study_mode_active:
         raise HTTPException(
             status_code=403,
@@ -123,7 +214,23 @@ async def start_timer(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Start the timer for active work"""
+    """
+    Startet den Timer für aktive Arbeit in einer Studien-Session.
+
+    Der Timer wird gestartet, wenn der Benutzer mit der eigentlichen
+    Befunderstellung beginnt (nach Auswahl des Templates, etc.).
+
+    Args:
+        session_id (int): ID der Studien-Session
+        current_user (User): Der authentifizierte Benutzer
+        db (Session): Datenbank-Session
+
+    Returns:
+        dict: Zeitstempel des Timer-Starts
+
+    Raises:
+        HTTPException (404): Wenn die Session nicht existiert
+    """
     session = db.query(StudySession).filter(
         StudySession.id == session_id,
         StudySession.user_id == current_user.id
@@ -144,7 +251,33 @@ async def complete_study_session(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Complete a study session with all metrics"""
+    """
+    Schließt eine Studien-Session mit allen gesammelten Metriken ab.
+
+    Diese Funktion speichert alle während der Befunderstellung erfassten
+    Daten und verknüpft die Session mit dem erstellten Befund.
+
+    Gespeicherte Metriken:
+    - report_id: ID des erstellten Befunds
+    - case_id: Fall-ID für Paarung
+    - template_used: Verwendetes Template
+    - Wortanzahlen: input, generated, final, saved
+    - Bearbeitungsmetriken: edit_operations, characters_added/deleted
+    - Pausenmetriken: pause_count, total_pause_seconds
+    - manual_report_text: Bei manuellen Sessions der Befundtext
+
+    Args:
+        session_id (int): ID der abzuschließenden Session
+        data (dict): Gesammelte Metriken vom Frontend
+        current_user (User): Der authentifizierte Benutzer
+        db (Session): Datenbank-Session
+
+    Returns:
+        dict: Erfolgsmeldung
+
+    Raises:
+        HTTPException (404): Wenn die Session nicht existiert
+    """
     session = db.query(StudySession).filter(
         StudySession.id == session_id,
         StudySession.user_id == current_user.id
@@ -214,7 +347,29 @@ async def export_user_study_data(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Export study data for the current user"""
+    """
+    Exportiert die Studiendaten des aktuellen Benutzers.
+
+    Der Export enthält alle Sessions des Benutzers mit vollständigen
+    Metriken für die wissenschaftliche Auswertung.
+
+    Export-Struktur:
+    - study_id: Studien-Identifier
+    - export_date: Zeitstempel des Exports
+    - participant: Benutzerinformationen
+    - total_sessions: Anzahl der Sessions
+    - sessions: Array mit allen Session-Details
+
+    Args:
+        current_user (User): Der authentifizierte Benutzer
+        db (Session): Datenbank-Session
+
+    Returns:
+        dict: Vollständige Studiendaten als JSON
+
+    Raises:
+        HTTPException (403): Wenn der Benutzer kein Studienteilnehmer ist
+    """
     if not current_user.study_participant:
         raise HTTPException(
             status_code=403,
@@ -254,7 +409,29 @@ async def export_all_study_data(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Export ALL study data (admin only)"""
+    """
+    Exportiert alle Studiendaten aller Teilnehmer (nur für Administratoren).
+
+    Dieser Endpoint ermöglicht den vollständigen Export aller Studiendaten
+    für die wissenschaftliche Auswertung. Nur der Admin-Benutzer hat Zugriff.
+
+    Export-Struktur:
+    - study_id: Studien-Identifier
+    - export_type: "admin_full_export"
+    - total_participants: Anzahl aller Studienteilnehmer
+    - total_sessions: Anzahl aller Sessions
+    - sessions: Array mit allen Session-Details inkl. Teilnehmer-Info
+
+    Args:
+        current_user (User): Der authentifizierte Benutzer
+        db (Session): Datenbank-Session
+
+    Returns:
+        dict: Vollständige Studiendaten aller Teilnehmer
+
+    Raises:
+        HTTPException (403): Wenn der Benutzer kein Administrator ist
+    """
     # Check if user is admin
     if current_user.username != "admin":  # Simple admin check - improve this in production
         raise HTTPException(
@@ -285,7 +462,21 @@ async def export_all_study_data(
     return study_data
 
 def _build_session_data(session: StudySession, db: Session, include_user_info: bool = False) -> dict:
-    """Helper function to build session data dictionary"""
+    """
+    Hilfsfunktion zum Aufbau des Session-Daten-Dictionaries für den Export.
+
+    Erstellt eine strukturierte Darstellung aller Session-Daten für den
+    JSON-Export, einschließlich Zeitstempel, Metriken und optional
+    des zugehörigen Befunds.
+
+    Args:
+        session (StudySession): Die zu exportierende Session
+        db (Session): Datenbank-Session
+        include_user_info (bool): Benutzer-Info einschließen (für Admin-Export)
+
+    Returns:
+        dict: Strukturierte Session-Daten mit allen Metriken
+    """
     from ..models.report_model import Report
 
     session_data = {

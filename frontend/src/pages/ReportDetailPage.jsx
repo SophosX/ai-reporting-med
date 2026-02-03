@@ -1,3 +1,27 @@
+/**
+ * @fileoverview ReportDetailPage - Detailansicht eines einzelnen Berichts.
+ *
+ * Diese Seite zeigt einen vollständigen Bericht mit allen Details.
+ * Sie ist auch der Ort, an dem Studien-Sessions abgeschlossen werden.
+ *
+ * Features:
+ * - Vollständige ReportCard mit allen Metriken
+ * - Template-Diff-Visualisierung (Vergleich mit Original-Template)
+ * - Studien-Timer-Fortführung von NewReportPage
+ * - "Studie abschließen"-Button mit Session-Finalisierung
+ *
+ * Diff-Visualisierung:
+ * - Grün: Hinzugefügter Text (im Bericht, nicht im Template)
+ * - Rot durchgestrichen: Entfernter Text (im Template, nicht im Bericht)
+ * - Normal: Unveränderter Text
+ *
+ * Studien-Abschluss (wenn aktiv):
+ * 1. Berechnet Gesamtdauer und Bearbeitungszeit
+ * 2. Erfasst Wortzahl-Metriken
+ * 3. Sendet alle Daten an /study/study-session/{id}/complete
+ * 4. Leert StudyContext und leitet zur HomePage weiter
+ */
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FaSync, FaArrowLeft, FaCheckCircle } from "react-icons/fa";
@@ -9,6 +33,15 @@ import * as diff from 'diff';
 import { useStudy } from "../context/StudyContext";
 import StudyTimerBar from "../components/StudyTimerBar";
 
+/**
+ * Detailansicht-Komponente für einen einzelnen Bericht.
+ *
+ * Lädt den Bericht via reportId aus der URL (/reports/:reportId).
+ * Zeigt die ReportCard in isDetailView-Modus und ggf. Template-Diff.
+ * Im Studienmodus wird die TimerBar fortgeführt und der Abschluss ermöglicht.
+ *
+ * @returns {JSX.Element} Die gerenderte Berichts-Detailseite
+ */
 function ReportDetailPage() {
   const { reportId } = useParams();
   const [report, setReport] = useState(null);

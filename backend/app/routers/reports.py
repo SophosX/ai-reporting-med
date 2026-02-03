@@ -1,3 +1,28 @@
+"""
+Reports Router - API-Endpoints für die Befundverwaltung.
+
+Dieses Modul enthält alle API-Endpoints für radiologische Befunde:
+
+Befunderstellung:
+- POST /reports/: KI-gestützte Befundgenerierung
+- POST /reports/manual: Manuelle Befunderstellung (ohne KI)
+
+Befundabruf:
+- GET /reports/: Alle Befunde des Benutzers
+- GET /reports/recent: Letzte N Befunde
+- GET /reports/{report_id}: Einzelner Befund
+- GET /reports/{report_id}/pdf: Befund als PDF-Download
+
+Befundverwaltung:
+- PUT /reports/{report_id}: Befund aktualisieren
+- DELETE /reports/{report_id}: Befund löschen
+
+Statistiken:
+- GET /reports/stats/count: Gesamtanzahl Befunde
+- GET /reports/stats/word-counts: Wortanzahl-Statistiken
+- GET /reports/analytics/timeline: Zeitreihen-Daten für Charts
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
@@ -23,7 +48,31 @@ async def create_report(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
-    # Get template text if template_id is provided
+    """
+    Erstellt einen neuen KI-generierten Befund.
+
+    Diese Funktion nimmt Stichpunkte des Radiologen entgegen und generiert
+    daraus einen vollständigen Befund mithilfe der konfigurierten KI (OpenAI/Azure/Uni).
+
+    Ablauf:
+    1. Template laden (falls angegeben)
+    2. KI-Generierung mit Input-Text und Template aufrufen
+    3. Wortanzahl-Metriken berechnen
+    4. Befund in Datenbank speichern
+
+    Args:
+        report_data (ReportCreate): Eingabedaten für die Befundgenerierung
+            - input_text: Stichpunkte/Diktat des Radiologen
+            - template_id: Optionale Template-ID
+            - custom_prompt: Optionaler Override für den System-Prompt
+            - case_id: Optionale Fall-ID für Studien-Tracking
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        ReportOut: Der erstellte Befund mit allen Metriken
+    """
+    # Hole Template-Text falls template_id angegeben
     template_text = None
     if report_data.template_id:
         template = get_template_by_id(report_data.template_id, db=db, user_id=current_user_id)
@@ -64,7 +113,30 @@ async def create_manual_report(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
-    """Create a manually written report (without AI) for study comparison"""
+    """
+    Erstellt einen manuell geschriebenen Befund (ohne KI-Unterstützung).
+
+    Dieser Endpoint wird für wissenschaftliche Studien verwendet, um Befunde
+    zu erfassen, die der Radiologe komplett selbst geschrieben hat.
+    Dies ermöglicht den Vergleich zwischen KI-unterstützter und manueller
+    Befunderstellung.
+
+    Unterschiede zum KI-Endpoint:
+    - Kein input_text (der gesamte Text kommt als report_text)
+    - is_manual wird auf True gesetzt
+    - generated_words ist 0 (keine KI-Generierung)
+
+    Args:
+        report_data (ManualReportCreate): Daten des manuellen Befunds
+            - report_text: Der vollständig manuell verfasste Befundtext
+            - template_id: Optionale Template-ID
+            - case_id: Fall-ID für Studien-Paarung mit KI-Befund
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        ReportOut: Der gespeicherte manuelle Befund
+    """
     # Get template text if template_id is provided
     template_text = None
     if report_data.template_id:
@@ -103,6 +175,18 @@ async def get_user_reports(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
+    """
+    Ruft alle Befunde des aktuellen Benutzers ab.
+
+    Die Befunde werden nach Erstellungsdatum sortiert (neueste zuerst).
+
+    Args:
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        List[ReportOut]: Liste aller Befunde des Benutzers
+    """
     reports = db.query(Report).filter(Report.user_id == current_user_id).order_by(Report.created_at.desc()).all()
     return reports
 
@@ -112,6 +196,16 @@ async def get_reports_count(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
+    """
+    Gibt die Gesamtanzahl der Befunde des Benutzers zurück.
+
+    Args:
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        dict: {"total": <Anzahl>}
+    """
     count = db.query(Report).filter(Report.user_id == current_user_id).count()
     return {"total": count}
 
@@ -122,6 +216,19 @@ async def get_recent_reports(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
+    """
+    Ruft die letzten N Befunde des Benutzers ab.
+
+    Wird für das Dashboard verwendet, um kürzlich erstellte Befunde anzuzeigen.
+
+    Args:
+        limit (int, optional): Maximale Anzahl zurückzugebender Befunde (Standard: 3)
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        List[ReportOut]: Liste der neuesten Befunde (max. limit Einträge)
+    """
     reports = db.query(Report).filter(Report.user_id == current_user_id).order_by(Report.created_at.desc()).limit(limit).all()
     return reports
 
@@ -132,6 +239,22 @@ async def get_report(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
+    """
+    Ruft einen einzelnen Befund nach ID ab.
+
+    Der Befund muss dem authentifizierten Benutzer gehören.
+
+    Args:
+        report_id (int): ID des abzurufenden Befunds
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        ReportOut: Der angeforderte Befund
+
+    Raises:
+        HTTPException (404): Wenn Befund nicht existiert oder anderem Benutzer gehört
+    """
     report = db.query(Report).filter(Report.id == report_id, Report.user_id == current_user_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
@@ -144,6 +267,23 @@ async def delete_report(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
+    """
+    Löscht einen Befund dauerhaft.
+
+    Der Befund muss dem authentifizierten Benutzer gehören.
+    WARNUNG: Diese Aktion kann nicht rückgängig gemacht werden!
+
+    Args:
+        report_id (int): ID des zu löschenden Befunds
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        None (HTTP 204 No Content)
+
+    Raises:
+        HTTPException (404): Wenn Befund nicht existiert oder anderem Benutzer gehört
+    """
     report = db.query(Report).filter(Report.id == report_id, Report.user_id == current_user_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
@@ -159,7 +299,26 @@ async def get_report_pdf(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
-    # Get the report
+    """
+    Generiert und liefert einen Befund als PDF-Dokument.
+
+    Das PDF enthält:
+    - Befund-ID und Erstellungsdatum
+    - Benutzername des Erstellers
+    - Eingabetext und generierter Befundtext
+
+    Args:
+        report_id (int): ID des Befunds
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        Response: PDF-Datei als Download (Content-Type: application/pdf)
+
+    Raises:
+        HTTPException (404): Wenn Befund nicht existiert oder anderem Benutzer gehört
+    """
+    # Befund abrufen
     report = db.query(Report).filter(Report.id == report_id, Report.user_id == current_user_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
@@ -199,7 +358,31 @@ async def update_report(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
-    # Get the existing report
+    """
+    Aktualisiert den Text eines bestehenden Befunds.
+
+    Bei der Aktualisierung werden die Wortanzahl-Metriken neu berechnet.
+    Vom Benutzer hinzugefügte Wörter werden als "input_words" gezählt,
+    um die Effizienzberechnung korrekt zu halten.
+
+    Metriken-Logik:
+    - generated_words: Bleibt unverändert (ursprüngliche KI-Beitrag)
+    - input_words: Wird um hinzugefügte Wörter erhöht
+    - saved_words: final_words - updated_input_words
+
+    Args:
+        report_id (int): ID des zu aktualisierenden Befunds
+        report_data (ReportUpdate): Neuer Befundtext
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        ReportOut: Der aktualisierte Befund
+
+    Raises:
+        HTTPException (404): Wenn Befund nicht existiert oder anderem Benutzer gehört
+    """
+    # Bestehenden Befund abrufen
     report = db.query(Report).filter(Report.id == report_id, Report.user_id == current_user_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
@@ -393,7 +576,28 @@ async def get_word_count_stats(
         db: Session = Depends(get_db),
         current_user_id: int = Depends(get_current_user_id)
 ):
-    """Get aggregate word count statistics for all user reports"""
+    """
+    Berechnet aggregierte Wortanzahl-Statistiken über alle Befunde des Benutzers.
+
+    Diese Statistiken werden für das Dashboard verwendet, um die
+    Effizienz der KI-gestützten Befunderstellung zu visualisieren.
+
+    Berechnete Metriken:
+    - total_reports: Gesamtanzahl der Befunde
+    - total_input_words: Summe aller Eingabewörter
+    - total_words: Summe aller finalen Wörter
+    - total_generated_words: Summe aller KI-generierten Wörter
+    - total_saved_words: Summe eingesparter Wörter
+    - total_edit_delta: Netto hinzugefügte/entfernte Wörter durch Bearbeitung
+    - Durchschnittswerte pro Befund
+
+    Args:
+        db (Session): Datenbank-Session
+        current_user_id (int): ID des authentifizierten Benutzers
+
+    Returns:
+        dict: Aggregierte Statistiken
+    """
     
     # Get all reports for the user
     reports = db.query(Report).filter(Report.user_id == current_user_id).all()

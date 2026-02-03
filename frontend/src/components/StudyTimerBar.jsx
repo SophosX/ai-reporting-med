@@ -1,3 +1,15 @@
+/**
+ * @fileoverview StudyTimerBar-Komponente - Timer-Leiste für Studien-Sessions.
+ *
+ * Diese Komponente zeigt eine fixierte Leiste am oberen Bildschirmrand,
+ * die während einer aktiven Studien-Session angezeigt wird. Sie trackt:
+ * - Verstrichene Zeit seit Session-Start
+ * - Anzahl und Gesamtdauer der Pausen
+ *
+ * Die Komponente kommuniziert Timer-Daten an die Eltern-Komponente
+ * für die spätere Speicherung in der Datenbank.
+ */
+
 import React, { useState, useEffect } from "react";
 import {
   FaClock,
@@ -7,6 +19,24 @@ import {
   FaInfoCircle,
 } from "react-icons/fa";
 
+/**
+ * StudyTimerBar-Komponente für das Tracking von Studien-Sessions.
+ *
+ * Zeigt eine fixierte Leiste mit Timer, Pausen-Funktionalität und
+ * Session-Informationen. Wird automatisch gestartet und kann
+ * pausiert/fortgesetzt werden.
+ *
+ * @param {Object} props - Komponenten-Props
+ * @param {Function} props.onSessionStart - Callback beim Start mit Timer-Daten
+ * @param {number} [props.studySessionId] - ID der Backend-Session
+ * @param {Function} props.onTimerData - Callback für Timer-Daten-Updates
+ * @param {Function} [props.onCancel] - Callback zum Abbrechen der Session
+ * @param {Object} [props.initialTimerData] - Initiale Timer-Daten (bei Wiederaufnahme)
+ * @param {Date} props.initialTimerData.startTime - Startzeit
+ * @param {number} props.initialTimerData.pauseCount - Bisherige Pausenanzahl
+ * @param {number} props.initialTimerData.totalPauseTime - Bisherige Pausenzeit
+ * @returns {JSX.Element} Die gerenderte Timer-Leiste
+ */
 function StudyTimerBar({ onSessionStart, studySessionId, onTimerData, onCancel, initialTimerData }) {
   const [timerStarted, setTimerStarted] = useState(false);
   const [timerPaused, setTimerPaused] = useState(false);

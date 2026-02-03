@@ -1,3 +1,19 @@
+/**
+ * @fileoverview ReportCard-Komponente - Darstellung medizinischer Befundberichte.
+ *
+ * Diese Komponente zeigt einen einzelnen Befundbericht mit:
+ * - Metadaten (Datum, Fall-ID, Studiendauer)
+ * - Eingabetext (Stichpunkte des Radiologen)
+ * - Generierter Befundtext (mit Markdown-Rendering)
+ * - Wortanzahl-Metriken (nur für KI-generierte Berichte)
+ *
+ * Features:
+ * - Inline-Bearbeitung mit Markdown-Editor
+ * - PDF-Download
+ * - Kopieren in Zwischenablage
+ * - Löschen-Funktionalität
+ */
+
 import React, { useState, useEffect } from "react";
 import {
   FaFilePdf,
@@ -18,12 +34,24 @@ import API_URL from "../utils/apiConfig";
 import WordCountMetrics from "./WordCountMetrics";
 
 /**
- * ReportCard component for displaying a medical report
+ * ReportCard-Komponente zur Anzeige eines medizinischen Befundberichts.
  *
- * @param {Object} report - The report data object
- * @param {boolean} isDetailView - Whether this is a detailed view of the report
- * @param {function} onDelete - Function to call when report is deleted
- * @param {function} onUpdate - Function to call when report is updated
+ * Zeigt den vollständigen Bericht mit Eingabe, generiertem Text und Metriken.
+ * Unterstützt Bearbeitung, PDF-Export und Löschung.
+ *
+ * @param {Object} props - Komponenten-Props
+ * @param {Object} props.report - Das Bericht-Datenobjekt aus der API
+ * @param {number} props.report.id - Eindeutige Bericht-ID
+ * @param {string} props.report.input_text - Eingabetext des Radiologen
+ * @param {string} props.report.report_text - Generierter Befundtext
+ * @param {string} props.report.created_at - Erstellungszeitpunkt (ISO-String)
+ * @param {boolean} props.report.is_manual - True wenn manuell erstellt
+ * @param {string} [props.report.case_id] - Fall-ID für Studien-Tracking
+ * @param {number} [props.report.study_duration_seconds] - Studiendauer in Sekunden
+ * @param {boolean} [props.isDetailView=false] - True für Detailansicht (ohne Link)
+ * @param {Function} [props.onDelete] - Callback nach erfolgreicher Löschung
+ * @param {Function} [props.onUpdate] - Callback nach erfolgreicher Aktualisierung
+ * @returns {JSX.Element} Die gerenderte Berichtskarte
  */
 function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   const [isEditingReport, setIsEditingReport] = useState(false);

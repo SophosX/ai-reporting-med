@@ -1,6 +1,47 @@
+/**
+ * @fileoverview templateService - API-Service für Template-Verwaltung.
+ *
+ * Dieses Modul stellt alle Template-bezogenen API-Funktionen bereit.
+ * Es abstrahiert die HTTP-Aufrufe und bietet eine einheitliche Schnittstelle
+ * für CRUD-Operationen auf Templates sowie Import/Export-Funktionalität.
+ *
+ * Template-Typen:
+ * - Standard-Templates: Vordefinierte System-Templates (GET /templates/)
+ * - User-Templates: Vom Benutzer erstellte Templates (GET /user-templates/)
+ * - Overrides: Benutzer-Anpassungen von Standard-Templates
+ *
+ * API-Endpunkte:
+ * - GET /templates/ - Alle Templates (Standard + User + Overrides)
+ * - GET /user-templates/ - Nur eigene Templates
+ * - POST /user-templates/ - Neues Template erstellen
+ * - PUT /user-templates/:id/ - Template aktualisieren
+ * - DELETE /user-templates/:id/ - Template löschen
+ * - PUT /templates/:id - Standard-Template überschreiben (Override)
+ * - DELETE /templates/:id - Override löschen / Template ausblenden
+ *
+ * Import/Export:
+ * - JSON-Export (einzeln und bulk)
+ * - JSON-Import mit Validierung
+ * - Beispiel-Templates zum Download
+ * - ZIP-Export für mehrere Templates (optional)
+ */
+
 import { authenticatedFetch } from "./auth";
 import API_URL from "./apiConfig";
 
+/**
+ * Lädt alle verfügbaren Templates (Standard + User + Overrides).
+ *
+ * Die API gibt bereits eine zusammengeführte Liste zurück,
+ * wobei Overrides die Standard-Templates ersetzen.
+ *
+ * @returns {Promise<Array>} Array aller Template-Objekte
+ * @throws {Error} Bei Netzwerk- oder Authentifizierungsfehlern
+ *
+ * @example
+ * const templates = await fetchAllTemplates();
+ * // templates[0] = { id: "mrt-spine", title: "MRT Wirbelsäule", text: "...", user_created: false }
+ */
 export const fetchAllTemplates = async () => {
   try {
     const response = await authenticatedFetch(`${API_URL}/templates/`);
@@ -14,6 +55,12 @@ export const fetchAllTemplates = async () => {
   }
 };
 
+/**
+ * Lädt nur die eigenen User-Templates (ohne Standard-Templates).
+ *
+ * @returns {Promise<Array>} Array der eigenen Template-Objekte
+ * @throws {Error} Bei Netzwerk- oder Authentifizierungsfehlern
+ */
 export const fetchUserTemplates = async () => {
   try {
     const response = await authenticatedFetch(`${API_URL}/user-templates/`);
@@ -27,6 +74,25 @@ export const fetchUserTemplates = async () => {
   }
 };
 
+/**
+ * Erstellt ein neues User-Template.
+ *
+ * Die template_id wird automatisch vom Backend generiert
+ * (slugified title + optional numeric suffix bei Konflikten).
+ *
+ * @param {Object} templateData - Die Template-Daten
+ * @param {string} templateData.title - Titel des Templates
+ * @param {string} templateData.text - Markdown-Inhalt
+ * @param {boolean} [fromImport=false] - True wenn aus JSON importiert (andere ID-Generierung)
+ * @returns {Promise<Object>} Das erstellte Template mit generierter ID
+ * @throws {Error} Bei Validierungs- oder Authentifizierungsfehlern
+ *
+ * @example
+ * const newTemplate = await createUserTemplate({
+ *   title: "MRT Knie",
+ *   text: "# MRT Knie\n\n..."
+ * });
+ */
 export const createUserTemplate = async (templateData, fromImport = false) => {
   try {
     // Make sure template_id is not an empty string
@@ -61,6 +127,26 @@ export const createUserTemplate = async (templateData, fromImport = false) => {
   }
 };
 
+/**
+ * Erstellt mehrere User-Templates in einer Batch-Operation.
+ *
+ * Verarbeitet Templates einzeln, sodass Fehler bei einem Template
+ * nicht die anderen blockieren. Gibt detaillierte Ergebnisse zurück.
+ *
+ * @param {Array<Object>} templatesData - Array von Template-Daten
+ * @returns {Promise<Object>} Ergebnis-Objekt mit Erfolgen und Fehlern
+ * @property {Array} successful - Erfolgreich erstellte Templates
+ * @property {Array} failed - Fehlgeschlagene Templates mit Fehlermeldung
+ * @property {number} successCount - Anzahl erfolgreicher Erstellungen
+ * @property {number} failureCount - Anzahl fehlgeschlagener Erstellungen
+ *
+ * @example
+ * const result = await createMultipleUserTemplates([
+ *   { title: "Template 1", text: "..." },
+ *   { title: "Template 2", text: "..." }
+ * ]);
+ * console.log(`${result.successCount} erstellt, ${result.failureCount} fehlgeschlagen`);
+ */
 export const createMultipleUserTemplates = async (templatesData) => {
   try {
     const results = [];
@@ -95,6 +181,16 @@ export const createMultipleUserTemplates = async (templatesData) => {
   }
 };
 
+/**
+ * Aktualisiert ein bestehendes User-Template.
+ *
+ * @param {number} templateId - Die Datenbank-ID des Templates
+ * @param {Object} templateData - Die aktualisierten Daten
+ * @param {string} [templateData.title] - Neuer Titel
+ * @param {string} [templateData.text] - Neuer Inhalt
+ * @returns {Promise<Object>} Das aktualisierte Template
+ * @throws {Error} Bei Validierungs- oder Berechtigungsfehlern
+ */
 export const updateUserTemplate = async (templateId, templateData) => {
   try {
     const response = await authenticatedFetch(
@@ -121,6 +217,13 @@ export const updateUserTemplate = async (templateId, templateData) => {
   }
 };
 
+/**
+ * Löscht ein User-Template permanent.
+ *
+ * @param {number} templateId - Die Datenbank-ID des Templates
+ * @returns {Promise<boolean>} True bei Erfolg
+ * @throws {Error} Bei Berechtigungs- oder Nicht-gefunden-Fehlern
+ */
 export const deleteUserTemplate = async (templateId) => {
   try {
     const response = await authenticatedFetch(
@@ -143,6 +246,18 @@ export const deleteUserTemplate = async (templateId) => {
   }
 };
 
+/**
+ * Erstellt eine Benutzer-Überschreibung (Override) für ein Standard-Template.
+ *
+ * Das Original-Template bleibt unverändert. Stattdessen wird ein
+ * UserTemplate mit is_default_override=true erstellt, das für diesen
+ * Benutzer Priorität hat.
+ *
+ * @param {string} templateId - Die ID des Standard-Templates (z.B. "mrt-spine")
+ * @param {Object} templateData - Die angepassten Daten
+ * @returns {Promise<Object>} Das Override-Template
+ * @throws {Error} Bei Fehlern
+ */
 export const updateDefaultTemplate = async (templateId, templateData) => {
   try {
     // Using the PUT endpoint, which will now create an override
@@ -170,7 +285,17 @@ export const updateDefaultTemplate = async (templateId, templateData) => {
   }
 };
 
-// Updated to handle deletion of default templates and their overrides
+/**
+ * Löscht eine Override oder blendet ein Standard-Template aus.
+ *
+ * Verhalten je nach Template-Typ:
+ * - Bei Override: Löscht die Überschreibung, Standard wird wieder sichtbar
+ * - Bei Standard: Markiert als gelöscht (erscheint nicht mehr in Liste)
+ *
+ * @param {string} templateId - Die ID des Templates
+ * @returns {Promise<boolean>} True bei Erfolg
+ * @throws {Error} Bei Berechtigungsfehlern
+ */
 export const deleteDefaultTemplate = async (templateId) => {
   try {
     const response = await authenticatedFetch(
@@ -193,7 +318,14 @@ export const deleteDefaultTemplate = async (templateId) => {
   }
 };
 
-// Export template to JSON
+/**
+ * Konvertiert ein Template-Objekt in einen JSON-String.
+ *
+ * Fügt Export-Metadaten (Zeitstempel, Version) hinzu.
+ *
+ * @param {Object} template - Das Template-Objekt
+ * @returns {string} Formatierter JSON-String
+ */
 export const exportTemplateToJSON = (template) => {
   const exportData = {
     title: template.title,
@@ -206,7 +338,19 @@ export const exportTemplateToJSON = (template) => {
   return JSON.stringify(exportData, null, 2);
 };
 
-// Download template as JSON file
+/**
+ * Lädt ein einzelnes Template als JSON-Datei herunter.
+ *
+ * Erstellt einen temporären Download-Link und löst ihn aus.
+ * Der Dateiname wird aus dem Template-Titel generiert.
+ *
+ * @param {Object} template - Das zu exportierende Template
+ * @throws {Error} Bei Download-Fehlern
+ *
+ * @example
+ * downloadTemplateAsJSON(myTemplate);
+ * // Lädt: template_mrt_wirbelsaeule_2025-02-03.json
+ */
 export const downloadTemplateAsJSON = (template) => {
   const jsonData = exportTemplateToJSON(template);
   const blob = new Blob([jsonData], { type: "application/json" });
@@ -246,7 +390,31 @@ export const downloadTemplateAsJSON = (template) => {
   }
 };
 
-// Parse and validate imported JSON template(s)
+/**
+ * Parst und validiert importierte JSON-Template-Daten.
+ *
+ * Unterstützt zwei Formate:
+ * 1. Einzelnes Template: { title, text, ... }
+ * 2. Mehrere Templates: { templates: [...], template_count: n }
+ *
+ * Validiert Pflichtfelder (title, text) und gibt sanitisierte Daten zurück.
+ *
+ * @param {string} jsonString - Der JSON-String aus der Datei
+ * @returns {Object} Validiertes Import-Objekt
+ * @property {boolean} isMultiple - True wenn Bulk-Import
+ * @property {Object} [template] - Einzelnes Template (wenn !isMultiple)
+ * @property {Array} [templates] - Array von Templates (wenn isMultiple)
+ * @property {number} [count] - Anzahl der Templates (wenn isMultiple)
+ * @throws {Error} Bei ungültigem JSON oder fehlenden Pflichtfeldern
+ *
+ * @example
+ * const result = parseImportedTemplate('{"title":"Test","text":"..."}');
+ * if (result.isMultiple) {
+ *   result.templates.forEach(t => createTemplate(t));
+ * } else {
+ *   createTemplate(result.template);
+ * }
+ */
 export const parseImportedTemplate = (jsonString) => {
   try {
     const parsed = JSON.parse(jsonString);
@@ -314,7 +482,16 @@ export const parseImportedTemplate = (jsonString) => {
   }
 };
 
-// Import template from file
+/**
+ * Importiert ein Template aus einer JSON-Datei.
+ *
+ * Liest die Datei über FileReader und parst/validiert den Inhalt.
+ * Gibt ein Promise zurück, das mit den validierten Daten auflöst.
+ *
+ * @param {File} file - Die hochgeladene Datei
+ * @returns {Promise<Object>} Validiertes Import-Objekt (wie parseImportedTemplate)
+ * @throws {Error} Bei Datei-Lese-Fehlern oder ungültigem Format
+ */
 export const importTemplateFromFile = (file) => {
   return new Promise((resolve, reject) => {
     if (!file) {
@@ -341,7 +518,12 @@ export const importTemplateFromFile = (file) => {
   });
 };
 
-// Create and download sample template JSON file
+/**
+ * Lädt ein Beispiel-Template als JSON herunter.
+ *
+ * Dient als Vorlage für das erwartete Import-Format.
+ * Enthält ein vollständiges MRT-Wirbelsäule-Template.
+ */
 export const downloadSampleTemplate = () => {
   const sampleTemplate = {
     title: "MRT Wirbelsäule - Beispiel Template",
@@ -387,7 +569,12 @@ export const downloadSampleTemplate = () => {
   }
 };
 
-// Create and download sample multiple templates JSON file
+/**
+ * Lädt ein Beispiel für Bulk-Import mit mehreren Templates herunter.
+ *
+ * Zeigt das Format für den Import mehrerer Templates gleichzeitig.
+ * Enthält zwei Beispiel-Templates (MRT Wirbelsäule, CT Thorax).
+ */
 export const downloadSampleMultipleTemplates = () => {
   const sampleMultipleTemplates = {
     exported_at: new Date().toISOString(),
@@ -447,7 +634,15 @@ export const downloadSampleMultipleTemplates = () => {
   }
 };
 
-// Export multiple templates as individual JSON files in a ZIP
+/**
+ * Exportiert mehrere Templates als ZIP-Archiv.
+ *
+ * Jedes Template wird als separate JSON-Datei im ZIP gespeichert.
+ * Verwendet dynamischen Import von JSZip nur bei Bedarf.
+ *
+ * @param {Array<Object>} templates - Die zu exportierenden Templates
+ * @throws {Error} Bei Export-Fehlern
+ */
 export const downloadMultipleTemplatesAsZip = async (templates) => {
   // Dynamically import JSZip only when needed
   const JSZip = (await import("jszip")).default;
@@ -496,7 +691,19 @@ export const downloadMultipleTemplatesAsZip = async (templates) => {
   }
 };
 
-// Export multiple templates as a single JSON file
+/**
+ * Exportiert mehrere Templates als einzelne JSON-Datei.
+ *
+ * Bevorzugtes Format für Bulk-Export, da es ohne externe
+ * Bibliotheken funktioniert und einfach wieder importiert werden kann.
+ *
+ * @param {Array<Object>} templates - Die zu exportierenden Templates
+ * @throws {Error} Bei Export-Fehlern
+ *
+ * @example
+ * downloadMultipleTemplatesAsJSON(selectedTemplates);
+ * // Lädt: templates_bulk_export_2025-02-03.json
+ */
 export const downloadMultipleTemplatesAsJSON = (templates) => {
   const exportData = {
     exported_at: new Date().toISOString(),
