@@ -17,7 +17,7 @@
  * 2. Benutzer gibt Fall-ID ein und startet Timer
  * 3. StudyTimerBar erscheint am oberen Bildschirmrand
  * 4. Timer läuft während der gesamten Berichterstellung
- * 5. Abschluss erfolgt auf der ReportDetailPage
+ * 5. Timer stoppt automatisch nach erfolgreicher Generierung
  *
  * Features:
  * - Custom Prompt: Benutzerdefinierter System-Prompt für die KI
@@ -42,7 +42,6 @@ import {
   FaUser,
   FaFlask,
   FaClock,
-  FaCheckCircle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useTemplate } from "../context/TemplateContext";
@@ -52,7 +51,7 @@ import API_URL from "../utils/apiConfig";
 import Select from "react-select";
 import StudyTimerBar from "../components/StudyTimerBar";
 import StudyTimerModal from "../components/StudyTimerModal";
-import { authenticatedFetch } from "../utils/auth";
+import { authenticatedFetch, safeJsonParse } from "../utils/auth";
 import { useStudy } from "../context/StudyContext";
 
 /**
@@ -80,12 +79,8 @@ function NewReportPage() {
     setStudySessionId,
     studyTimerData,
     setStudyTimerData,
-    setGeneratedReportId,
-    setOriginalGeneratedText,
-    setFirstGenerationTime,
     startStudySession,
-    editOperations,
-    setEditOperations,
+    completeStudySession,
     checkStudyMode,
     caseId,
   } = useStudy();
@@ -394,13 +389,6 @@ function NewReportPage() {
     setReportVisible(false);
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Bitte melden Sie sich an");
-        setIsGenerating(false);
-        return;
-      }
-
       const payload = {
         input_text: inputText,
         template_id: selectedTemplateId || null,
@@ -408,29 +396,40 @@ function NewReportPage() {
         case_id: caseId || null,  // Include case_id from study session
       };
 
-      const response = await fetch(`${API_URL}/reports/`, {
+      const response = await authenticatedFetch(`${API_URL}/reports/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
+        timeoutMs: 120000,
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await safeJsonParse(response);
         throw new Error(
           errorData.detail || "Fehler beim Erstellen des Berichts"
         );
       }
 
-      const data = await response.json();
+      const data = await safeJsonParse(response);
       setReportText(data.report_text);
-      setOriginalGeneratedText(data.report_text);
-      setGeneratedReportId(data.id);
       setReportVisible(true);
-      setFirstGenerationTime(new Date());
       toast.success("Bericht erfolgreich erstellt");
+
+      // Auto-complete study session after successful AI generation
+      if (isStudyMode && studySessionId) {
+        const success = await completeStudySession({
+          reportId: data.id,
+          inputWords: data.input_words || 0,
+          generatedWords: data.generated_words || 0,
+          finalWords: data.total_words || 0,
+          templateUsed: selectedTemplateId || null,
+        });
+        if (success) {
+          toast.success("Studiensitzung automatisch abgeschlossen!");
+        } else {
+          toast.warning("Bericht erstellt, aber Studiensitzung konnte nicht abgeschlossen werden.");
+        }
+        setShowStudyTimer(false);
+      }
 
       // Navigate to report detail page after a short delay
       setTimeout(() => {
@@ -745,10 +744,6 @@ function NewReportPage() {
                 value={reportText}
                 onChange={(value) => {
                   setReportText(value);
-                  // Track edit operations in study mode
-                  if (isStudyMode && studySessionId && value !== originalGeneratedText) {
-                    setEditOperations(prev => prev + 1);
-                  }
                 }}
                 preview="preview"
                 height={400}

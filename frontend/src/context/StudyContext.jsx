@@ -8,16 +8,14 @@
  * - Ob der Benutzer im Studienmodus ist
  * - Die aktuelle Session-ID
  * - Timer-Daten (Start, Pausen)
- * - Den generierten Bericht
- * - Bearbeitungs-Operationen
  * - Die Fall-ID für Paarung
  *
  * Lifecycle einer Studien-Session:
  * 1. checkStudyMode() beim App-Start
  * 2. startStudySession() beim Erstellen eines Berichts
  * 3. Timer-Updates über setStudyTimerData()
- * 4. Bericht-Generierung tracken (setGeneratedReportId, setFirstGenerationTime)
- * 5. clearStudySession() nach Abschluss
+ * 4. completeStudySession() wird automatisch nach Berichtserstellung aufgerufen
+ * 5. clearStudySession() räumt den State auf
  *
  * Session-Typen:
  * - "with_ai": KI-gestützter Bericht (NewReportPage)
@@ -25,7 +23,7 @@
  *
  * @example
  * // In einer Komponente
- * const { isStudyMode, startStudySession, clearStudySession } = useStudy();
+ * const { isStudyMode, startStudySession, completeStudySession } = useStudy();
  *
  * if (isStudyMode) {
  *   const sessionId = await startStudySession(templateId, caseId, "with_ai");
@@ -49,13 +47,10 @@ const StudyContext = createContext();
  * @property {boolean} isStudyMode - True wenn Studienmodus aktiv
  * @property {number|null} studySessionId - ID der aktuellen Session
  * @property {Object|null} studyTimerData - Timer-Daten (startTime, pauseCount, etc.)
- * @property {number|null} generatedReportId - ID des generierten Berichts
- * @property {number} editOperations - Anzahl der Bearbeitungen
- * @property {string} originalGeneratedText - Ursprünglicher KI-Text
- * @property {Date|null} firstGenerationTime - Zeitpunkt der ersten Generierung
  * @property {string|null} caseId - Fall-ID für Paarung
  * @property {Function} checkStudyMode - Prüft Studienmodus beim Backend
  * @property {Function} startStudySession - Startet neue Session
+ * @property {Function} completeStudySession - Schließt Session automatisch ab
  * @property {Function} clearStudySession - Leert alle Session-Daten
  */
 export function useStudy() {
@@ -77,10 +72,6 @@ export function StudyProvider({ children }) {
   const [isStudyMode, setIsStudyMode] = useState(false);
   const [studySessionId, setStudySessionId] = useState(null);
   const [studyTimerData, setStudyTimerData] = useState(null);
-  const [generatedReportId, setGeneratedReportId] = useState(null);
-  const [editOperations, setEditOperations] = useState(0);
-  const [originalGeneratedText, setOriginalGeneratedText] = useState("");
-  const [firstGenerationTime, setFirstGenerationTime] = useState(null);
   const [caseId, setCaseId] = useState(null);
 
   // Load study mode status on mount
@@ -138,11 +129,62 @@ export function StudyProvider({ children }) {
   const clearStudySession = () => {
     setStudySessionId(null);
     setStudyTimerData(null);
-    setGeneratedReportId(null);
-    setEditOperations(0);
-    setOriginalGeneratedText("");
-    setFirstGenerationTime(null);
     setCaseId(null);
+  };
+
+  /**
+   * Schließt die aktuelle Studien-Session automatisch ab.
+   * Wird nach erfolgreicher Berichtserstellung aufgerufen.
+   *
+   * @param {Object} params - Session-Abschluss-Daten
+   * @param {number} params.reportId - ID des erstellten Berichts
+   * @param {number} params.inputWords - Anzahl der Eingabe-Wörter
+   * @param {number} params.generatedWords - Anzahl der generierten Wörter
+   * @param {number} params.finalWords - Endgültige Wortzahl
+   * @param {number|null} params.templateUsed - Verwendete Template-ID
+   * @returns {Promise<boolean>} true bei Erfolg, false bei Fehler
+   */
+  const completeStudySession = async ({ reportId, inputWords, generatedWords, finalWords, templateUsed }) => {
+    try {
+      const endTime = new Date();
+      const totalDuration = Math.floor(
+        (endTime - new Date(studyTimerData.startTime)) / 1000
+      );
+
+      const response = await authenticatedFetch(
+        `${API_URL}/study/study-session/${studySessionId}/complete`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            report_id: reportId,
+            case_id: caseId,
+            total_duration: totalDuration,
+            editing_duration: 0,
+            pause_count: studyTimerData.pauseCount || 0,
+            total_pause_seconds: studyTimerData.totalPauseTime || 0,
+            edit_operations: 0,
+            input_words: inputWords || 0,
+            generated_words: generatedWords || 0,
+            final_words: finalWords || 0,
+            template_used: templateUsed || null,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        clearStudySession();
+        return true;
+      } else {
+        throw new Error("Fehler beim Abschließen der Studiensitzung");
+      }
+    } catch (error) {
+      console.error("Error completing study session:", error);
+      clearStudySession();
+      return false;
+    }
   };
 
   const value = {
@@ -152,18 +194,11 @@ export function StudyProvider({ children }) {
     setStudySessionId,
     studyTimerData,
     setStudyTimerData,
-    generatedReportId,
-    setGeneratedReportId,
-    editOperations,
-    setEditOperations,
-    originalGeneratedText,
-    setOriginalGeneratedText,
-    firstGenerationTime,
-    setFirstGenerationTime,
     caseId,
     setCaseId,
     checkStudyMode,
     startStudySession,
+    completeStudySession,
     clearStudySession,
   };
 

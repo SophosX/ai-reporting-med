@@ -10,8 +10,8 @@
  * 2. Benutzer gibt Fall-ID ein (MUSS gleich sein wie bei KI-Bericht für Vergleich)
  * 3. Timer startet, StudyTimerBar erscheint
  * 4. Benutzer schreibt Befund manuell in großes Textfeld
- * 5. "Bericht speichern" erstellt manuellen Bericht
- * 6. Weiterleitung zur ReportDetailPage für Studien-Abschluss
+ * 5. "Bericht speichern" erstellt manuellen Bericht und beendet Studiensitzung automatisch
+ * 6. Weiterleitung zur ReportDetailPage
  *
  * Unterschiede zu NewReportPage:
  * - Kein KI-Aufruf (report_text = manualText)
@@ -61,6 +61,7 @@ function ManualReportPage() {
     setCaseId,
     checkStudyMode,
     startStudySession,
+    completeStudySession,
     clearStudySession,
   } = useStudy();
 
@@ -161,10 +162,28 @@ function ManualReportPage() {
       }
 
       const reportData = await reportResponse.json();
-      toast.success("Bericht gespeichert - Timer läuft weiter");
 
-      // Navigate to report detail page where user can finalize the study
-      // Timer continues running until user clicks "Studie abschließen"
+      // Auto-complete study session after successful save
+      if (isStudyMode && studySessionId) {
+        const finalWords = manualText.trim() ? manualText.trim().split(/\s+/).length : 0;
+        const success = await completeStudySession({
+          reportId: reportData.id,
+          inputWords: 0,
+          generatedWords: 0,
+          finalWords: finalWords,
+          templateUsed: null,
+        });
+        if (success) {
+          toast.success("Bericht gespeichert und Studiensitzung abgeschlossen!");
+        } else {
+          toast.warning("Bericht gespeichert, aber Studiensitzung konnte nicht abgeschlossen werden.");
+        }
+        setShowStudyTimer(false);
+      } else {
+        toast.success("Bericht gespeichert");
+      }
+
+      // Navigate to report detail page
       setTimeout(() => {
         navigate(`/reports/${reportData.id}`);
       }, 1000);
