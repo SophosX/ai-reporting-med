@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .core.database import Base, engine
-from .routers import auth, reports, templates, user_templates, custom_prompt, study
+from .routers import auth, reports, templates, user_templates, custom_prompt, study, admin_templates
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from .core.config import settings
@@ -89,7 +89,16 @@ def run_migrations():
         # raise
 
 def create_app():
-    app = FastAPI(title=settings.PROJECT_NAME + " API")
+    # In Produktion keine oeffentliche API-Dokumentation (/docs, /redoc, /openapi.json)
+    if settings.is_production:
+        app = FastAPI(
+            title=settings.PROJECT_NAME + " API",
+            docs_url=None,
+            redoc_url=None,
+            openapi_url=None,
+        )
+    else:
+        app = FastAPI(title=settings.PROJECT_NAME + " API")
 
     # Read allowed origins from environment variable, or use defaults
     cors_origins_env = settings.CORS_ORIGINS
@@ -152,6 +161,7 @@ def create_app():
     app.include_router(user_templates.router, prefix="/user-templates", tags=["user-templates"])
     app.include_router(custom_prompt.router, prefix="/custom-prompt", tags=["custom-prompt"])
     app.include_router(study.router, prefix="/study", tags=["study"])
+    app.include_router(admin_templates.router, prefix="/admin", tags=["admin"])
 
     logger.info("Application startup complete")
     return app

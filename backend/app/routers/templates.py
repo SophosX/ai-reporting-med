@@ -21,11 +21,9 @@ Das System unterscheidet zwischen:
 from fastapi import APIRouter, Depends, HTTPException
 from ..data.templates import get_all_templates, get_template_by_id, update_default_template, delete_default_template
 from ..core.database import get_db
-from ..core.security import get_current_user_id, oauth2_scheme
+from ..core.security import get_current_user_id
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any
-import jwt
-from ..core.config import settings
 from pydantic import BaseModel
 from ..models.template_model import UserTemplate
 import logging
@@ -58,14 +56,13 @@ router = APIRouter()
 @router.get("/")
 async def get_templates(
     db: Session = Depends(get_db),
-    token: Optional[str] = Depends(oauth2_scheme)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
-    Ruft alle verfügbaren Templates ab.
+    Ruft alle verfügbaren Templates des angemeldeten Benutzers ab.
 
-    Gibt sowohl System-Templates als auch benutzerspezifische Templates zurück.
-    Wenn der Benutzer authentifiziert ist, werden auch seine eigenen Templates
-    und Overrides von System-Templates einbezogen.
+    Gibt System-Templates sowie die eigenen Templates und Overrides des
+    Benutzers zurück. Erfordert einen gültigen Login (401 sonst).
 
     Template-Priorisierung:
     1. Benutzer-Overrides ersetzen das ursprüngliche System-Template
@@ -74,29 +71,18 @@ async def get_templates(
 
     Args:
         db (Session): Datenbank-Session
-        token (str, optional): JWT-Token für Benutzeridentifikation
+        current_user_id (int): ID des authentifizierten Benutzers
 
     Returns:
         List[dict]: Liste aller verfügbaren Templates
     """
-    user_id = None
-    if token:
-        try:
-            # Decode the token manually to get the user ID
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            user_id = int(payload.get("sub"))
-        except Exception:
-            # Just skip user templates if auth fails
-            pass
-    
-    templates = get_all_templates(db=db, user_id=user_id)
-    return templates
+    return get_all_templates(db=db, user_id=current_user_id)
 
 @router.get("/{template_id}")
 async def get_template(
     template_id: str,
     db: Session = Depends(get_db),
-    token: Optional[str] = Depends(oauth2_scheme)
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Ruft ein einzelnes Template nach ID ab.
@@ -107,24 +93,17 @@ async def get_template(
     Args:
         template_id (str): ID des Templates (z.B. "ct-thorax-standard")
         db (Session): Datenbank-Session
-        token (str, optional): JWT-Token für Benutzeridentifikation
+        current_user_id (int): ID des authentifizierten Benutzers
 
     Returns:
-        dict: Template-Daten oder Fehlermeldung
+        dict: Template-Daten
+
+    Raises:
+        HTTPException (404): Wenn das Template nicht existiert
     """
-    user_id = None
-    if token:
-        try:
-            # Decode the token manually to get the user ID
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            user_id = int(payload.get("sub"))
-        except Exception:
-            # Just skip user templates if auth fails
-            pass
-    
-    template = get_template_by_id(template_id, db=db, user_id=user_id)
+    template = get_template_by_id(template_id, db=db, user_id=current_user_id)
     if not template:
-        return {"detail": "Vorlage nicht gefunden"}
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
     return template
 
 @router.put("/{template_id}")

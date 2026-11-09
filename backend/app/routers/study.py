@@ -432,8 +432,8 @@ async def export_all_study_data(
     Raises:
         HTTPException (403): Wenn der Benutzer kein Administrator ist
     """
-    # Check if user is admin
-    if current_user.username != "admin":  # Simple admin check - improve this in production
+    # Administratoren werden ueber ADMIN_USERNAMES in der .env konfiguriert
+    if current_user.username not in settings.admin_usernames:
         raise HTTPException(
             status_code=403,
             detail="Nur Administratoren können alle Studiendaten exportieren"

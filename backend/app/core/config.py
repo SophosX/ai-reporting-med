@@ -93,6 +93,23 @@ class Settings(BaseSettings):
     # CORS-Einstellungen für Cross-Origin-Anfragen
     CORS_ORIGINS: str = ""  # Komma-getrennt: "http://localhost:5173,https://example.com"
 
+    # Umgebung: "development" oder "production".
+    # In Produktion werden /docs, /redoc und /openapi.json abgeschaltet.
+    ENVIRONMENT: str = "development"
+
+    # Administratoren (Komma-getrennte Benutzernamen). Diese Benutzer dürfen
+    # alle Studiendaten exportieren und Vorlagen global migrieren.
+    ADMIN_USERNAMES: str = "admin,newmhayawi"
+
+    @property
+    def admin_usernames(self) -> set:
+        """Administratoren als Menge von Benutzernamen (ohne Leerzeichen, ohne Leereinträge)."""
+        return {u.strip() for u in self.ADMIN_USERNAMES.split(",") if u.strip()}
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.strip().lower() == "production"
+
     # Konfiguration für das Laden von Umgebungsvariablen
     model_config = SettingsConfigDict(
         env_file=".env",  # Pfad zur .env-Datei
