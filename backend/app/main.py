@@ -9,6 +9,7 @@ import importlib.util
 import sys
 from .core.init_db import init_db
 from .core.database import get_db
+from .core.request_logging import setup_logging, RequestLoggingMiddleware, register_exception_handlers
 from dotenv import load_dotenv
 
 # Import all models to ensure SQLAlchemy can resolve relationships
@@ -17,8 +18,8 @@ from .models import User, UserTemplate, Report, StudySession
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging (stdout + backend/logs/{app,errors,requests}.log)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 def run_migrations():
@@ -131,6 +132,10 @@ def create_app():
         expose_headers=["*"],
         max_age=86400,  # 24 hours
     )
+
+    # Request-Logging pro Benutzer (requests.log) + Fehlerbehandlung mit Request-ID
+    app.add_middleware(RequestLoggingMiddleware)
+    register_exception_handlers(app)
 
     # Run migrations before creating tables
     run_migrations()

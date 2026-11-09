@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     # alle Studiendaten exportieren und Vorlagen global migrieren.
     ADMIN_USERNAMES: str = "admin,newmhayawi"
 
+    # Log-Level für app.log und stdout (DEBUG, INFO, WARNING, ERROR).
+    # requests.log (eine Zeile pro Anfrage) und errors.log sind davon unabhängig.
+    LOG_LEVEL: str = "INFO"
+
     @property
     def admin_usernames(self) -> set:
         """Administratoren als Menge von Benutzernamen (ohne Leerzeichen, ohne Leereinträge)."""

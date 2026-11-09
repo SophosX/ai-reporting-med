@@ -155,6 +155,31 @@ Never test by sending `PUT /templates/{system_id}` with `apply_globally: true` a
 production unless you intend to change the template for everyone. The original texts of
 the 17 system templates live in `app/data/templates.py`.
 
+### Logging and Error Handling (since November 2026)
+`app/core/request_logging.py` writes to `backend/logs/` (gitignored, owned by `www-data`,
+rotated daily by `/etc/logrotate.d/ai-reporting`, 30 days kept):
+- `requests.log`: one JSON line per request with `request_id`, `user_id` (from the JWT,
+  `null` = anonymous, `"invalid-token"` = bad/expired token), method, path, query, status,
+  `duration_ms`, client IP (via nginx `X-Real-IP`) and user agent. Never request bodies or
+  report texts. Level WARNING for 4xx, ERROR for 5xx.
+- `errors.log`: everything from WARNING upwards, incl. tracebacks of unhandled exceptions,
+  failed logins and global template changes.
+- `app.log`: all application logs at `LOG_LEVEL` (default INFO; logins, registrations, startup).
+
+Every response carries `X-Request-ID`. Unhandled exceptions return
+`{"detail": ..., "request_id": "..."}` with status 500; grep that ID in `errors.log` for the
+traceback and in `requests.log` for the user. Useful one-liners:
+
+```bash
+cd backend/logs
+grep '"status": 5' requests.log                      # all server errors
+grep '"user_id": 64' requests.log | tail             # what did user 64 do last
+grep -A30 'request_id=abc123def456' errors.log       # traceback for a reported ID
+```
+
+Startup no longer overwrites existing system templates from `app/data/templates.py`
+(`import_default_templates` only inserts missing ones), so global edits persist across restarts.
+
 ### Authorization
 - All `/templates/*` endpoints require a valid JWT (no anonymous access).
 - Admin-only endpoints (`GET /study/study-data/export-all`,
@@ -190,6 +215,9 @@ ENVIRONMENT=development
 
 # Comma-separated usernames with admin rights (study export-all, global template migration)
 ADMIN_USERNAMES=admin,newmhayawi
+
+# Log level for app.log/stdout (requests.log and errors.log are independent of this)
+LOG_LEVEL=INFO
 ```
 
 ### Frontend
@@ -238,6 +266,9 @@ Full end-to-end test of all API endpoints on 2026-11-09, followed by these fixes
    `PUT /reports/{id}` (previously called a non-existent `/reports/latest/`).
 4. **Hardening** - API docs disabled in production, `GET /templates/{id}` returns 404 for
    unknown IDs, template endpoints require login, admin usernames moved to `ADMIN_USERNAMES`.
+5. **Per-user request logging** - every request is logged with user ID and request ID
+   (see "Logging and Error Handling"); unhandled errors return a `request_id`.
+6. **System templates persist** - startup sync no longer overwrites edited system templates.
 
 Test accounts `claudetest1794218560` and `claudestudy1794218560` exist in the production
 database for future end-to-end tests (intentionally kept).

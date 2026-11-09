@@ -416,7 +416,10 @@ def import_default_templates(db: Session):
 
     Diese Funktion wird beim Anwendungsstart aufgerufen und:
     1. Importiert neue Templates aus radiologyTemplates
-    2. Aktualisiert existierende Templates
+    2. Lässt existierende Templates UNVERÄNDERT (seit 2026-11: die Datenbank ist
+       die Quelle der Wahrheit, damit globale Änderungen über die Oberfläche
+       - PUT /templates/{id} mit apply_globally=true - einen Neustart überleben;
+       radiologyTemplates dient nur noch als Erstbefüllung)
     3. Entfernt Templates, die nicht mehr im Array sind
     4. Entfernt auch zugehörige Benutzer-Overrides gelöschter Templates
 
@@ -442,10 +445,9 @@ def import_default_templates(db: Session):
         ).first()
         
         if existing:
-            # Update existing template with new content
-            logger.info(f"Updating existing default template: {template['id']}")
-            existing.title = template["title"]
-            existing.text = template["text"]
+            # Existing templates are left untouched so that global edits made in
+            # the app (apply_globally=true) persist across restarts.
+            logger.debug(f"Default template already present, keeping DB version: {template['id']}")
         else:
             # Create new template in database
             logger.info(f"Creating new default template: {template['id']}")

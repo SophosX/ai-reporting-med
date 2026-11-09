@@ -11,7 +11,7 @@ Besonderheiten:
 - Ermöglicht Login sowohl mit Benutzername als auch E-Mail
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from ..core.database import get_db
 from ..models.user_model import User
@@ -19,6 +19,10 @@ from ..core.security import get_password_hash, verify_password, create_access_to
 from ..schemas.user_schemas import UserCreate, UserLogin, UserOut
 from datetime import timedelta
 from ..core.config import settings
+from ..core.request_logging import _client_ip
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -113,12 +117,17 @@ Wichtig: Achte besonders darauf, dass kein pathologischer Befund aus dem diktier
     db.commit()
     db.refresh(new_user)
 
+    logger.info(
+        "Registrierung: user_id=%s username=%s study_participant=%s",
+        new_user.id, new_user.username, study_participant
+    )
+
     # Benutzerinformationen ohne Token zurückgeben
     return new_user
 
 
 @router.post("/login")
-def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
+def login_user(login_data: UserLogin, request: Request, db: Session = Depends(get_db)):
     """
     Authentifiziert einen Benutzer und gibt einen JWT-Token zurück.
 
@@ -142,8 +151,8 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
     Raises:
         HTTPException (401): Bei ungültigen Anmeldedaten
     """
-    print("user")  # Debug-Ausgabe
     identifier = login_data.identifier
+    client_ip = _client_ip(request)
 
     # Heuristik: Enthält der Identifier ein "@"? Dann als E-Mail behandeln
     if "@" in identifier:
@@ -151,11 +160,12 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
     else:
         user = db.query(User).filter(User.username == identifier).first()
 
-    print("user", user)  # Debug-Ausgabe
-
     # Passwort überprüfen
     if not user or not verify_password(login_data.password, user.password):
+        logger.warning("Login fehlgeschlagen: identifier=%s ip=%s", identifier, client_ip)
         raise HTTPException(status_code=401, detail="Ungültige Anmeldedaten")
+
+    logger.info("Login: user_id=%s username=%s ip=%s", user.id, user.username, client_ip)
 
     # JWT-Token erstellen
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
