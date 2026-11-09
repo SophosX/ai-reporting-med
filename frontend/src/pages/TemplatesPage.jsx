@@ -98,6 +98,8 @@ function TemplatesPage() {
   // State for creating/editing templates
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(null);
+  // Nur fuer Standard-Vorlagen: true = Aenderung gilt fuer alle Benutzer (mit Rueckfrage)
+  const [editGlobally, setEditGlobally] = useState(false);
   const [expandedTemplates, setExpandedTemplates] = useState(new Set());
   const [newTemplate, setNewTemplate] = useState({
     title: "",
@@ -320,6 +322,7 @@ function TemplatesPage() {
 
   const handleCancelEdit = () => {
     setIsEditing(null);
+    setEditGlobally(false);
     setEditedTemplate({
       title: "",
       text: "",
@@ -340,12 +343,33 @@ function TemplatesPage() {
       }
 
       if (isDefaultTemplate) {
-        // Handle default template update
-        await updateDefaultTemplate(defaultTemplateId, {
+        // Standard-Template: ohne Haken wird eine persoenliche Kopie (Override)
+        // angelegt; mit Haken wird das Template fuer ALLE Benutzer geaendert.
+        if (editGlobally) {
+          const confirmed = window.confirm(
+            "ACHTUNG: Globale Änderung!\n\n" +
+              "Sie ändern diese Standard-Vorlage für ALLE Benutzer der Plattform. " +
+              "Die bisherige Fassung wird überschrieben und kann nicht automatisch wiederhergestellt werden.\n\n" +
+              "Ohne diese Option wird nur eine persönliche Kopie für Sie gespeichert.\n\n" +
+              "Wirklich für alle Benutzer ändern?"
+          );
+          if (!confirmed) {
+            return;
+          }
+        }
+        const result = await updateDefaultTemplate(defaultTemplateId, {
           title: editedTemplate.title,
           text: editedTemplate.text,
+          apply_globally: editGlobally,
         });
-        toast.success("Template erfolgreich aktualisiert");
+        if (result && result.applied_globally) {
+          toast.success("Standard-Vorlage für alle Benutzer geändert");
+        } else if (result && result.is_default_override) {
+          toast.success("Persönliche Kopie der Vorlage gespeichert");
+        } else {
+          toast.success("Template erfolgreich aktualisiert");
+        }
+        setEditGlobally(false);
       } else {
         // Handle user template update
         await updateUserTemplate(templateId, {
@@ -1492,6 +1516,43 @@ function TemplatesPage() {
                           />
                         </div>
                       </div>
+                      {!isOverride && (
+                        <div
+                          className={`mb-4 p-3 rounded-lg border ${
+                            editGlobally
+                              ? "border-red-500/60 bg-red-500/10"
+                              : "border-gray-700 bg-gray-800/60"
+                          }`}
+                        >
+                          <label className="flex items-start space-x-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editGlobally}
+                              onChange={(e) => setEditGlobally(e.target.checked)}
+                              className="mt-1 h-4 w-4 accent-red-500"
+                            />
+                            <span className="text-sm text-gray-300">
+                              <span className="font-medium text-white">
+                                Für alle Benutzer ändern (global)
+                              </span>
+                              <br />
+                              {editGlobally ? (
+                                <span className="text-red-300">
+                                  Achtung: Die Standard-Vorlage wird für alle
+                                  Benutzer überschrieben. Vor dem Speichern wird
+                                  noch einmal nachgefragt.
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">
+                                  Ohne Haken wird nur eine persönliche Kopie
+                                  gespeichert, die Standard-Vorlage bleibt für
+                                  andere unverändert.
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        </div>
+                      )}
                       <div className="flex justify-end space-x-3">
                         <button
                           type="button"
@@ -1503,10 +1564,20 @@ function TemplatesPage() {
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center space-x-1"
+                          className={`px-4 py-2 text-white rounded-lg flex items-center space-x-1 ${
+                            editGlobally && !isOverride
+                              ? "bg-red-600 hover:bg-red-700"
+                              : "bg-green-500 hover:bg-green-600"
+                          }`}
                         >
                           <FaSave className="text-sm" />
-                          <span>Aktualisieren</span>
+                          <span>
+                            {editGlobally && !isOverride
+                              ? "Für alle Benutzer speichern"
+                              : isOverride
+                              ? "Aktualisieren"
+                              : "Persönliche Kopie speichern"}
+                          </span>
                         </button>
                       </div>
                     </form>

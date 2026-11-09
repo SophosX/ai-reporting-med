@@ -28,6 +28,12 @@ import jwt
 from ..core.config import settings
 from pydantic import BaseModel
 from ..models.template_model import UserTemplate
+import logging
+
+logger = logging.getLogger(__name__)
+
+# System-Templates gehoeren dem Benutzer mit ID 1 (siehe data/templates.py)
+SYSTEM_USER_ID = 1
 
 
 class TemplateUpdate(BaseModel):
@@ -37,9 +43,14 @@ class TemplateUpdate(BaseModel):
     Attributes:
         title (str, optional): Neuer Anzeigename des Templates
         text (str, optional): Neuer Template-Text
+        apply_globally (bool): Nur bei System-Templates relevant. False (Standard):
+            es wird eine persönliche Kopie (Override) für den Benutzer angelegt bzw.
+            aktualisiert. True: das System-Template selbst wird für ALLE Benutzer
+            geändert - das Frontend fragt dies explizit mit Warnung ab.
     """
     title: Optional[str] = None
     text: Optional[str] = None
+    apply_globally: bool = False
 
 
 router = APIRouter()
@@ -126,50 +137,99 @@ async def update_template(
     """
     Aktualisiert ein Template.
 
-    Ermöglicht das Ändern von Titel und/oder Text eines Templates.
-    Nur Benutzer-Templates können direkt aktualisiert werden.
+    Verhalten je nach Template-Typ:
+    1. Eigenes Benutzer-Template oder eigenes Override: wird direkt geändert.
+    2. System-Template (user_id=1), apply_globally=False (Standard): es wird eine
+       persönliche Kopie (Override) angelegt bzw. ein vorhandenes Override
+       aktualisiert. Das System-Template bleibt für alle anderen unverändert.
+    3. System-Template, apply_globally=True: das System-Template selbst wird
+       geändert und gilt damit für ALLE Benutzer. Ein evtl. vorhandenes eigenes
+       Override bleibt bestehen und überdeckt die globale Vorlage weiterhin.
+    4. Template eines anderen Benutzers: 404 (nicht sichtbar, nicht änderbar).
 
     Args:
         template_id (str): ID des zu aktualisierenden Templates
-        template_data (TemplateUpdate): Neue Werte für Titel/Text
+        template_data (TemplateUpdate): Neue Werte für Titel/Text, apply_globally
         db (Session): Datenbank-Session
         current_user_id (int): ID des authentifizierten Benutzers
 
     Returns:
-        dict: Aktualisierte Template-Daten
+        dict: Aktualisierte Template-Daten (bei Override: die Override-Daten)
 
     Raises:
-        HTTPException (404): Wenn das Template nicht existiert
+        HTTPException (404): Wenn das Template nicht existiert oder fremd ist
         HTTPException (500): Bei Datenbankfehlern
     """
-    # Get the template
     template = db.query(UserTemplate).filter(
         UserTemplate.template_id == template_id
     ).first()
-    
+
     if not template:
         raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
-    
-    # Update the template
-    if template_data.title is not None:
-        template.title = template_data.title
-    
-    if template_data.text is not None:
-        template.text = template_data.text
-    
+
+    is_system_template = template.user_id == SYSTEM_USER_ID
+    is_own_template = template.user_id == current_user_id
+
+    if not is_own_template and not is_system_template:
+        # Vorlage eines anderen Benutzers - nach außen wie "nicht vorhanden"
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
+
     try:
+        if is_own_template or (is_system_template and template_data.apply_globally):
+            # Fall 1 und 3: direkt ändern
+            if is_system_template:
+                logger.warning(
+                    "GLOBALE Vorlagenänderung: Benutzer %s ändert System-Template '%s' für alle Benutzer",
+                    current_user_id, template_id
+                )
+            if template_data.title is not None:
+                template.title = template_data.title
+            if template_data.text is not None:
+                template.text = template_data.text
+            target = template
+        else:
+            # Fall 2: persönliche Kopie anlegen/aktualisieren
+            target = db.query(UserTemplate).filter(
+                UserTemplate.user_id == current_user_id,
+                UserTemplate.default_template_id == template_id,
+                UserTemplate.is_default_override == True
+            ).first()
+
+            if target:
+                # Vorhandenes Override (oder "[DELETED]"-Marker, der damit wieder sichtbar wird)
+                is_deleted_marker = target.title == "[DELETED]" and target.text == "[DELETED]"
+                # Nicht uebergebene Felder: beim echten Override dessen Werte behalten,
+                # beim Marker auf das System-Template zurueckfallen
+                fallback = template if is_deleted_marker else target
+                target.template_id = f"user-{current_user_id}-override-{template_id}"
+                target.title = template_data.title if template_data.title is not None else fallback.title
+                target.text = template_data.text if template_data.text is not None else fallback.text
+            else:
+                target = UserTemplate(
+                    user_id=current_user_id,
+                    template_id=f"user-{current_user_id}-override-{template_id}",
+                    title=template_data.title if template_data.title is not None else template.title,
+                    text=template_data.text if template_data.text is not None else template.text,
+                    is_default_override=True,
+                    default_template_id=template_id
+                )
+                db.add(target)
+
         db.commit()
-        db.refresh(template)
-        
+        db.refresh(target)
+
         return {
-            "id": template.template_id,
-            "title": template.title,
-            "text": template.text,
-            "user_created": template.user_id != 1,
-            "is_default_override": template.is_default_override,
-            "template_db_id": template.id,
-            "default_template_id": template.default_template_id if template.is_default_override else None
+            "id": target.template_id,
+            "title": target.title,
+            "text": target.text,
+            "user_created": target.user_id != SYSTEM_USER_ID,
+            "is_default_override": target.is_default_override,
+            "template_db_id": target.id,
+            "default_template_id": target.default_template_id if target.is_default_override else None,
+            "applied_globally": bool(is_system_template and template_data.apply_globally)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Fehler beim Aktualisieren der Vorlage: {str(e)}")
@@ -246,10 +306,16 @@ async def remove_template(
             UserTemplate.default_template_id == template_id,
             UserTemplate.is_default_override == True
         ).first()
-        
+
         if existing_deleted_override:
-            # Already hidden/deleted for this user
-            return {"detail": "Vorlage ist bereits aus Ihrer Ansicht ausgeblendet"}
+            if existing_deleted_override.title == "[DELETED]" and existing_deleted_override.text == "[DELETED]":
+                # Already hidden/deleted for this user
+                return {"detail": "Vorlage ist bereits aus Ihrer Ansicht ausgeblendet"}
+            # Ein echtes Override wurde ueber die System-ID angesprochen (so macht es das
+            # Frontend beim "Zuruecksetzen"): Override loeschen -> Standard wieder sichtbar
+            db.delete(existing_deleted_override)
+            db.commit()
+            return {"detail": "Vorlagenüberschreibung gelöscht, auf Standardvorlage zurückgesetzt"}
         
         # Create a "deleted" marker by creating an override with a special flag
         deleted_template_id = f"user-{current_user_id}-deleted-{template_id}"

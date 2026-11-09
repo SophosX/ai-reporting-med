@@ -88,6 +88,7 @@ function NewReportPage() {
   const [reportText, setReportText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
+  const [createdReportId, setCreatedReportId] = useState(null);
   const [customPrompt, setCustomPrompt] = useState("");
   const [userCustomPrompt, setUserCustomPrompt] = useState("");
   const [hasUserCustomPrompt, setHasUserCustomPrompt] = useState(false);
@@ -411,6 +412,7 @@ function NewReportPage() {
 
       const data = await safeJsonParse(response);
       setReportText(data.report_text);
+      setCreatedReportId(data.id);
       setReportVisible(true);
       toast.success("Bericht erfolgreich erstellt");
 
@@ -450,31 +452,29 @@ function NewReportPage() {
 
   const handleSaveChanges = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Bitte melden Sie sich an");
+      if (!createdReportId) {
+        toast.error("Kein gespeicherter Bericht vorhanden");
         return;
       }
 
-      // Assuming there's an endpoint to update the report
-      // This would need to be implemented on your backend
-      const response = await fetch(`${API_URL}/reports/latest/`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ report_text: reportText }),
-      });
+      // Speichert den (ggf. bearbeiteten) Text am gerade erstellten Bericht
+      const response = await authenticatedFetch(
+        `${API_URL}/reports/${createdReportId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ report_text: reportText }),
+        }
+      );
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await safeJsonParse(response);
         throw new Error(
           errorData.detail || "Fehler beim Speichern des Berichts"
         );
       }
 
       toast.success("Änderungen gespeichert");
+      navigate(`/reports/${createdReportId}`);
     } catch (error) {
       console.error("Error saving report changes:", error);
       toast.error(error.message || "Fehler beim Speichern der Änderungen");
