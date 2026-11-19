@@ -801,10 +801,11 @@ def _build_session_data(session: StudySession, db: Session, include_user_info: b
             "report_id": e.report_id,
             "payload": e.payload,
         }
-        for e in db.query(StudyEvent)
-        .filter(StudyEvent.study_session_id == session.id)
-        .order_by(StudyEvent.server_ts, StudyEvent.id)
-        .all()
+        # Browser-Ereignisse werden gebündelt gesendet -> nach Browser-Zeitpunkt sortieren
+        for e in sorted(
+            db.query(StudyEvent).filter(StudyEvent.study_session_id == session.id).all(),
+            key=lambda ev: (ev.client_ts or ev.server_ts, ev.id),
+        )
     ]
 
     return session_data
