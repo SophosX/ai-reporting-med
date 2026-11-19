@@ -119,35 +119,52 @@ export const authenticatedFetch = async (url, options = {}) => {
     throw new Error("Not authenticated");
   }
 
+  // Set up timeout via AbortController (default: 120s)
+  const timeoutMs = options.timeoutMs || 120000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   // Add authorization header
   const fetchOptions = {
     ...options,
+    signal: controller.signal,
     headers: {
       ...options.headers,
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
   };
+  // Remove custom option so fetch doesn't complain
+  delete fetchOptions.timeoutMs;
 
-  const response = await fetch(url, fetchOptions);
+  try {
+    const response = await fetch(url, fetchOptions);
 
-  // If we get a 401 (Unauthorized), it means our token is invalid or expired
-  if (response.status === 401) {
-    logout();
+    // If we get a 401 (Unauthorized), it means our token is invalid or expired
+    if (response.status === 401) {
+      logout();
 
-    // Prevent multiple redirects and messages
-    if (!isRedirecting) {
-      isRedirecting = true;
-      // Only redirect if we're not already on the login page
-      if (!window.location.pathname.includes("/login")) {
-        window.location.href = "/login";
-        throw new Error("Session expired. Please login again.");
+      // Prevent multiple redirects and messages
+      if (!isRedirecting) {
+        isRedirecting = true;
+        // Only redirect if we're not already on the login page
+        if (!window.location.pathname.includes("/login")) {
+          window.location.href = "/login";
+          throw new Error("Session expired. Please login again.");
+        }
       }
+      throw new Error("Authentication required");
     }
-    throw new Error("Authentication required");
-  }
 
-  return response;
+    return response;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Zeitüberschreitung: Der Server hat nicht rechtzeitig geantwortet. Bitte versuchen Sie es erneut.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
 
 /**
@@ -166,6 +183,24 @@ export const authenticatedFetch = async (url, options = {}) => {
  *   console.log(`Benutzer-ID: ${user.id}`);
  * }
  */
+/**
+ * Parst eine Response sicher als JSON.
+ * Gibt eine lesbare Fehlermeldung wenn die Antwort kein gültiges JSON ist
+ * (z.B. bei Nginx-Fehlerseiten 502/504).
+ */
+export const safeJsonParse = async (response) => {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    // HTML error page from Nginx (502/504)
+    if (text.trim().startsWith("<")) {
+      throw new Error("Der Server ist vorübergehend nicht erreichbar. Bitte versuchen Sie es erneut.");
+    }
+    throw new Error("Ungültige Server-Antwort. Bitte versuchen Sie es erneut.");
+  }
+};
+
 export const getCurrentUser = () => {
   const token = localStorage.getItem("token");
   const userId = localStorage.getItem("user_id");
