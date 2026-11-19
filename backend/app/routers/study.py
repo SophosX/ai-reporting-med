@@ -467,7 +467,7 @@ async def record_study_events(
     session_ids = {e.session_id for e in events if e.session_id}
     report_ids = {e.report_id for e in events if e.report_id}
     owned_sessions = set()
-    owned_reports = set()
+    report_session = {}  # eigene Befund-ID -> verknüpfte Session (oder None)
     if session_ids:
         owned_sessions = {
             sid for (sid,) in db.query(StudySession.id).filter(
@@ -475,8 +475,8 @@ async def record_study_events(
             ).all()
         }
     if report_ids:
-        owned_reports = {
-            rid for (rid,) in db.query(Report.id).filter(
+        report_session = {
+            rid: rsid for (rid, rsid) in db.query(Report.id, Report.study_session_id).filter(
                 Report.id.in_(report_ids), Report.user_id == current_user.id
             ).all()
         }
@@ -489,8 +489,10 @@ async def record_study_events(
             continue
         db.add(StudyEvent(
             user_id=current_user.id,
-            study_session_id=e.session_id if e.session_id in owned_sessions else None,
-            report_id=e.report_id if e.report_id in owned_reports else None,
+            # Ereignisse von der Detailseite kennen nur den Befund -> Session über den Befund
+            study_session_id=(e.session_id if e.session_id in owned_sessions
+                              else report_session.get(e.report_id)),
+            report_id=e.report_id if e.report_id in report_session else None,
             event_type=event_type,
             client_ts=_parse_client_ts(e.ts),
             server_ts=now,

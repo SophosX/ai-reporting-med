@@ -30,6 +30,7 @@ import MDEditor from "@uiw/react-md-editor";
 import rehypeSanitize from "rehype-sanitize";
 import { Link, useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../utils/auth";
+import studyTracker from "../utils/studyTracker";
 import API_URL from "../utils/apiConfig";
 import WordCountMetrics from "./WordCountMetrics";
 
@@ -83,6 +84,9 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   const { date, time } = formatDate(report?.created_at);
 
   const handleCopy = (text) => {
+    if (report?.case_id) {
+      studyTracker.trackCopy(report.id, text === report.input_text ? "input" : "report");
+    }
     navigator.clipboard.writeText(text);
     toast.success("Text in die Zwischenablage kopiert");
   };
@@ -171,6 +175,8 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   const handleStartEditingReport = () => {
     setEditedReportText(report.report_text);
     setIsEditingReport(true);
+    // Studien-Erfassung: Dauer und Umfang der Nachbearbeitung (nur Studienbefunde mit Fall-ID)
+    if (report?.case_id) studyTracker.beginEdit(report.id);
   };
 
   const handleStartEditingInput = () => {
@@ -187,7 +193,10 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ report_text: editedReportText }),
+          body: JSON.stringify({
+            report_text: editedReportText,
+            ...(studyTracker.endEdit(true) || {}),
+          }),
         }
       );
 
@@ -247,6 +256,7 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
   };
 
   const handleCancelReportEdit = () => {
+    studyTracker.endEdit(false);
     setIsEditingReport(false);
     setEditedReportText(report.report_text);
   };
@@ -417,10 +427,19 @@ function ReportCard({ report, isDetailView = false, onDelete, onUpdate }) {
         {/* Report content with Markdown editor */}
         <div className="mt-4">
           {isEditingReport ? (
-            <div data-color-mode="dark" className="md-editor-wrapper">
+            <div
+              data-color-mode="dark"
+              className="md-editor-wrapper"
+              onPaste={(e) =>
+                studyTracker.trackEditPaste(e.clipboardData?.getData("text")?.length || 0)
+              }
+            >
               <MDEditor
                 value={editedReportText}
-                onChange={setEditedReportText}
+                onChange={(value) => {
+                  studyTracker.trackEditChange(editedReportText, value);
+                  setEditedReportText(value);
+                }}
                 preview="live"
                 height={400}
                 previewOptions={{

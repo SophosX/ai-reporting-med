@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import studyTracker from "../utils/studyTracker";
 import {
   FaClock,
   FaPause,
@@ -101,8 +102,10 @@ function StudyTimerBar({ onSessionStart, studySessionId, onTimerData, onCancel, 
       setTimerPaused(true);
       setPauseStartTime(Date.now());
       setPauseCount((prev) => prev + 1);
+      studyTracker.track("pause_started");
     } else {
       const pauseDuration = Math.floor((Date.now() - pauseStartTime) / 1000);
+      studyTracker.track("pause_ended", { pause_ms: Date.now() - pauseStartTime });
       setTotalPauseTime((prev) => prev + pauseDuration);
       setTimerPaused(false);
       setPauseStartTime(null);

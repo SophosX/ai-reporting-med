@@ -38,6 +38,7 @@ import API_URL from "../utils/apiConfig";
 import StudyTimerBar from "../components/StudyTimerBar";
 import StudyTimerModal from "../components/StudyTimerModal";
 import { authenticatedFetch } from "../utils/auth";
+import studyTracker from "../utils/studyTracker";
 
 /**
  * Seite für manuelle (KI-freie) Berichterstellung im Studienmodus.
@@ -62,7 +63,7 @@ function ManualReportPage() {
     checkStudyMode,
     startStudySession,
     completeStudySession,
-    clearStudySession,
+    cancelStudySession,
   } = useStudy();
 
   const [manualText, setManualText] = useState("");
@@ -74,6 +75,11 @@ function ManualReportPage() {
   useEffect(() => {
     checkStudyMode();
   }, [checkStudyMode]);
+
+  // Studien-Erfassung: Eingaben früherer Seitenbesuche nicht mitzählen
+  useEffect(() => {
+    studyTracker.resetPreSession();
+  }, []);
 
   // Show study modal automatically when page loads in study mode
   useEffect(() => {
@@ -87,7 +93,8 @@ function ManualReportPage() {
       const sessionId = await startStudySession(
         null, // No template for manual reports
         timerData.caseId,
-        "without_ai"
+        "without_ai",
+        { inputCharsAtStart: manualText.length }
       );
       setStudyTimerData(timerData);
       setCaseId(timerData.caseId);
@@ -112,8 +119,8 @@ function ManualReportPage() {
 
     if (confirmCancel) {
       setShowStudyTimer(false);
-      // Clear study session from context
-      clearStudySession();
+      // Abbruch an den Server melden und Session-State leeren
+      cancelStudySession();
       toast.info("Studiensitzung abgebrochen.");
       navigate("/");
     }
@@ -151,6 +158,7 @@ function ManualReportPage() {
           report_text: manualText,
           template_id: null,
           case_id: caseId,
+          study_session_id: isStudyMode ? studySessionId : null,
         }),
       });
 
@@ -254,7 +262,13 @@ function ManualReportPage() {
               id="manualText"
               rows="20"
               value={manualText}
-              onChange={(e) => setManualText(e.target.value)}
+              onChange={(e) => {
+                if (isStudyMode) studyTracker.trackTextChange(manualText, e.target.value);
+                setManualText(e.target.value);
+              }}
+              onPaste={(e) => {
+                if (isStudyMode) studyTracker.trackPaste(e.clipboardData?.getData("text")?.length || 0);
+              }}
               placeholder="Schreiben Sie hier Ihren Befund ohne KI-Unterstützung..."
               className="w-full p-4 bg-gray-800/50 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none font-mono text-sm"
             />

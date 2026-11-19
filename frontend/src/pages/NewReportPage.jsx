@@ -53,6 +53,7 @@ import StudyTimerBar from "../components/StudyTimerBar";
 import StudyTimerModal from "../components/StudyTimerModal";
 import { authenticatedFetch, safeJsonParse } from "../utils/auth";
 import { useStudy } from "../context/StudyContext";
+import studyTracker from "../utils/studyTracker";
 
 /**
  * Haupt-Seite für die KI-gestützte Berichterstellung.
@@ -81,6 +82,7 @@ function NewReportPage() {
     setStudyTimerData,
     startStudySession,
     completeStudySession,
+    cancelStudySession,
     checkStudyMode,
     caseId,
   } = useStudy();
@@ -132,6 +134,8 @@ function NewReportPage() {
   // Load user's custom prompt on component mount
   useEffect(() => {
     loadUserCustomPrompt();
+    // Studien-Erfassung: Eingaben früherer Seitenbesuche nicht mitzählen
+    studyTracker.resetPreSession();
   }, []);
 
   // Handle study mode changes
@@ -201,7 +205,9 @@ function NewReportPage() {
       const sessionId = await startStudySession(
         selectedTemplateId,
         timerData.caseId,
-        "with_ai"
+        "with_ai",
+        // Festhalten, ob das Diktat schon vor dem Timer-Start geschrieben wurde
+        { inputCharsAtStart: inputText.length }
       );
       setStudyTimerData(timerData);
       setShowStudyModal(false);
@@ -225,11 +231,9 @@ function NewReportPage() {
     );
     
     if (confirmCancel) {
-      // If session was started, we might want to delete it
-      if (studySessionId) {
-        // You could add an API call here to mark the session as cancelled
-      }
-      
+      // Abbruch an den Server melden (Session bleibt als "cancelled" erhalten)
+      cancelStudySession();
+
       setShowStudyTimer(false);
       setStudySessionId(null);
       setIsStudyMode(false);
@@ -389,12 +393,22 @@ function NewReportPage() {
     setIsGenerating(true);
     setReportVisible(false);
 
+    const inStudySession = isStudyMode && studySessionId;
+    const generateStartedAt = performance.now();
+    if (inStudySession) {
+      studyTracker.markGenerateClicked({
+        input_chars: inputText.length,
+        input_words: inputText.trim() ? inputText.trim().split(/\s+/).length : 0,
+      });
+    }
+
     try {
       const payload = {
         input_text: inputText,
         template_id: selectedTemplateId || null,
         custom_prompt: customPrompt || null,
         case_id: caseId || null,  // Include case_id from study session
+        study_session_id: inStudySession ? studySessionId : null,
       };
 
       const response = await authenticatedFetch(`${API_URL}/reports/`, {
@@ -411,6 +425,12 @@ function NewReportPage() {
       }
 
       const data = await safeJsonParse(response);
+      if (inStudySession) {
+        studyTracker.markGenerationReceived(
+          data.id,
+          Math.round(performance.now() - generateStartedAt)
+        );
+      }
       setReportText(data.report_text);
       setCreatedReportId(data.id);
       setReportVisible(true);
@@ -438,6 +458,11 @@ function NewReportPage() {
         navigate(`/reports/${data.id}`);
       }, 1500);
     } catch (error) {
+      if (inStudySession) {
+        studyTracker.track("generation_failed", {
+          client_ms: Math.round(performance.now() - generateStartedAt),
+        });
+      }
       console.error("Error creating report:", error);
       toast.error(error.message || "Fehler beim Erstellen des Berichts");
     } finally {
@@ -446,6 +471,7 @@ function NewReportPage() {
   };
 
   const handleCopy = () => {
+    studyTracker.trackCopy(createdReportId, "report");
     navigator.clipboard.writeText(reportText);
     toast.success("Bericht kopiert!");
   };
@@ -559,7 +585,13 @@ function NewReportPage() {
               id="inputText"
               rows="5"
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => {
+                if (isStudyMode) studyTracker.trackTextChange(inputText, e.target.value);
+                setInputText(e.target.value);
+              }}
+              onPaste={(e) => {
+                if (isStudyMode) studyTracker.trackPaste(e.clipboardData?.getData("text")?.length || 0);
+              }}
               required
               placeholder="Geben Sie hier Ihr Diktat oder Stichpunkte ein..."
               className="w-full p-4 bg-gray-800/50 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"

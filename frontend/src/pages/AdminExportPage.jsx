@@ -38,6 +38,7 @@ import API_URL from "../utils/apiConfig";
  */
 function AdminExportPage() {
   const [loading, setLoading] = useState(false);
+  const [csvLoading, setCsvLoading] = useState(false);
   const [studyData, setStudyData] = useState(null);
   const [userLoading, setUserLoading] = useState(false);
   const [userStudyData, setUserStudyData] = useState(null);
@@ -71,6 +72,32 @@ function AdminExportPage() {
       toast.error("Fehler beim Exportieren der Admin-Studiendaten");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // CSV: eine Zeile pro Session (für Excel/R/SPSS)
+  const handleAdminCsvExport = async () => {
+    setCsvLoading(true);
+    try {
+      const response = await authenticatedFetch(`${API_URL}/study/study-data/export-all.csv`);
+      if (!response.ok) {
+        throw new Error("Fehler beim CSV-Export");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `studiendaten_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("CSV-Export erfolgreich!");
+    } catch (error) {
+      console.error("Admin CSV export error:", error);
+      toast.error("Fehler beim CSV-Export der Studiendaten");
+    } finally {
+      setCsvLoading(false);
     }
   };
 
@@ -150,6 +177,15 @@ function AdminExportPage() {
                   <span>Alle Studiendaten exportieren</span>
                 </>
               )}
+            </button>
+
+            <button
+              onClick={handleAdminCsvExport}
+              disabled={csvLoading}
+              className="w-full mt-3 flex items-center justify-center space-x-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 text-white py-3 px-6 rounded-lg transition-colors duration-200 font-medium"
+            >
+              <FaDownload />
+              <span>{csvLoading ? "Exportiere CSV..." : "Als CSV (eine Zeile pro Sitzung)"}</span>
             </button>
 
             {studyData && (

@@ -33,6 +33,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authenticatedFetch } from "../utils/auth";
 import API_URL from "../utils/apiConfig";
+import studyTracker from "../utils/studyTracker";
 
 /**
  * React Context für Studien-Session-State.
@@ -89,13 +90,15 @@ export function StudyProvider({ children }) {
         const data = await response.json();
         // Only set study mode active if user is a study participant AND has study mode active
         setIsStudyMode(data.study_participant && data.study_mode_active);
+        // Passive Datenerfassung nur für Studienteilnehmer
+        studyTracker.setEnabled(!!data.study_participant);
       }
     } catch (error) {
       console.error("Error checking study mode:", error);
     }
   };
 
-  const startStudySession = async (templateId = null, caseIdParam = null, sessionType = "with_ai") => {
+  const startStudySession = async (templateId = null, caseIdParam = null, sessionType = "with_ai", context = {}) => {
     try {
       const response = await authenticatedFetch(
         `${API_URL}/study/study-session/start`,
@@ -115,6 +118,7 @@ export function StudyProvider({ children }) {
       if (response.ok) {
         const data = await response.json();
         setStudySessionId(data.session_id);
+        studyTracker.beginSession(data.session_id, sessionType, context);
         if (caseIdParam) {
           setCaseId(caseIdParam);
         }
@@ -170,9 +174,11 @@ export function StudyProvider({ children }) {
             generated_words: generatedWords || 0,
             final_words: finalWords || 0,
             template_used: templateUsed || null,
+            client_metrics: studyTracker.snapshot(),
           }),
         }
       );
+      studyTracker.endSession("completed");
 
       if (response.ok) {
         clearStudySession();
@@ -182,8 +188,29 @@ export function StudyProvider({ children }) {
       }
     } catch (error) {
       console.error("Error completing study session:", error);
+      studyTracker.endSession("completed");
       clearStudySession();
       return false;
+    }
+  };
+
+  /**
+   * Markiert die laufende Session als abgebrochen (bisher ging der Abbruch nur
+   * lokal verloren) und leert anschließend den State.
+   */
+  const cancelStudySession = async () => {
+    const sessionId = studySessionId;
+    const metrics = studyTracker.snapshot();
+    studyTracker.endSession("cancelled");
+    clearStudySession();
+    if (!sessionId) return;
+    try {
+      await authenticatedFetch(`${API_URL}/study/study-session/${sessionId}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ client_metrics: metrics }),
+      });
+    } catch (error) {
+      console.error("Error cancelling study session:", error);
     }
   };
 
@@ -199,6 +226,7 @@ export function StudyProvider({ children }) {
     checkStudyMode,
     startStudySession,
     completeStudySession,
+    cancelStudySession,
     clearStudySession,
   };
 
