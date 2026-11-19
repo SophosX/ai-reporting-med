@@ -15,6 +15,7 @@ Haupt-Funktionen:
 - get_completion(): Generiert Befundtext aus Eingabe und Template
 """
 
+import time
 from openai import OpenAI, AzureOpenAI
 from ..core.config import settings
 
@@ -83,7 +84,7 @@ def get_model_name():
         return settings.OPENAI_MODEL
 
 
-def get_completion(input_text: str, template_text: str = None, custom_prompt: str = None) -> str:
+def get_completion(input_text: str, template_text: str = None, custom_prompt: str = None, _meta: dict = None) -> str:
     """
     Generiert einen radiologischen Befund aus Eingabetext und Template.
 
@@ -111,6 +112,8 @@ def get_completion(input_text: str, template_text: str = None, custom_prompt: st
         # Get appropriate client and model
         client = get_ai_client()
         model = get_model_name()
+        if _meta is not None:
+            _meta["model"] = model
 
         # Create the system prompt
         if custom_prompt:
@@ -128,6 +131,10 @@ Wichtig: Achte besonders darauf, dass kein pathologischer Befund aus dem diktier
         # Add template instruction if provided
         if template_text:
             system_prompt += f"\n\nVerwende die folgende Vorlage und halte dich an diese Struktur:\n{template_text}"
+
+        if _meta is not None:
+            _meta["system_prompt"] = system_prompt
+        _t0 = time.monotonic()
 
         # Different parameters for gpt-5
         if settings.AI_PROVIDER == "uni" and model == "gpt-5":
@@ -150,10 +157,15 @@ Wichtig: Achte besonders darauf, dass kein pathologischer Befund aus dem diktier
                 temperature=0.2,  # Lower temperature for more consistent, clinical responses
                 max_tokens=1000
             )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if _meta is not None:
+            _fill_response_meta(_meta, response, _t0, content)
+        return content
     
     except ValueError as e:
         # Configuration error
+        if _meta is not None:
+            _meta["error"] = True
         print(f"AI Service configuration error: {e}")
         return f"Konfigurationsfehler: {str(e)}"
     except Exception as e:
@@ -165,4 +177,51 @@ Wichtig: Achte besonders darauf, dass kein pathologischer Befund aus dem diktier
         else:
             provider_name = "OpenAI"
         print(f"{provider_name} API error: {e}")
+        if _meta is not None:
+            _meta["error"] = True
+            if "_t0" in locals():
+                _meta["generation_ms"] = int((time.monotonic() - _t0) * 1000)
         return f"Fehler bei der Befunderstellung: {str(e)}"
+
+
+def _fill_response_meta(meta: dict, response, t0: float, content) -> None:
+    """Überträgt Latenz, Abbruchgrund und Token-Verbrauch der KI-Antwort in meta."""
+    meta["generation_ms"] = int((time.monotonic() - t0) * 1000)
+    try:
+        meta["finish_reason"] = response.choices[0].finish_reason
+    except Exception:
+        pass
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        meta["prompt_tokens"] = getattr(usage, "prompt_tokens", None)
+        meta["completion_tokens"] = getattr(usage, "completion_tokens", None)
+        details = getattr(usage, "completion_tokens_details", None)
+        if details is not None:
+            meta["reasoning_tokens"] = getattr(details, "reasoning_tokens", None)
+    # Leere Antwort (z.B. alle Tokens fürs Reasoning verbraucht) ist für die Studie ein Fehlerfall
+    if not content or not str(content).strip():
+        meta["error"] = True
+
+
+def get_completion_with_meta(input_text: str, template_text: str = None, custom_prompt: str = None):
+    """
+    Wie get_completion(), liefert zusätzlich Metadaten für die Studien-Auswertung.
+
+    Returns:
+        tuple[str, dict]: (Befundtext, meta) mit meta-Schlüsseln provider, model,
+        system_prompt, generation_ms, finish_reason, prompt_tokens, completion_tokens,
+        reasoning_tokens, error (True bei Fehlertext oder leerer Antwort)
+    """
+    meta = {
+        "provider": settings.AI_PROVIDER,
+        "model": None,
+        "system_prompt": None,
+        "generation_ms": None,
+        "finish_reason": None,
+        "prompt_tokens": None,
+        "completion_tokens": None,
+        "reasoning_tokens": None,
+        "error": False,
+    }
+    text = get_completion(input_text, template_text, custom_prompt, _meta=meta)
+    return text, meta

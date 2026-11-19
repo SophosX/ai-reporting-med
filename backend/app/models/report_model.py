@@ -73,5 +73,28 @@ class Report(Base):
     case_id = Column(String(100), nullable=True)  # Fall-ID für Paarbildung KI/Manual
     study_duration_seconds = Column(Integer, nullable=True)  # Session-Dauer in Sekunden
 
+    # Erweiterte Studien-Erfassung (hinzugefügt 2026-11-19)
+    # Direkte Verknüpfung zur Studien-Session (wird schon bei Erstellung gesetzt,
+    # nicht erst beim Abschluss der Session)
+    study_session_id = Column(
+        Integer,
+        ForeignKey("study_sessions.id", use_alter=True, name="fk_reports_study_session"),
+        nullable=True,
+    )
+    # Unveränderte KI-Rohausgabe - report_text wird bei Bearbeitung überschrieben,
+    # dieses Feld nie. Basis für die Messung des Nachbearbeitungsaufwands.
+    ai_generated_text = Column(Text, nullable=True)
+    ai_provider = Column(String(50), nullable=True)  # openai / azure / uni
+    ai_model = Column(String(100), nullable=True)  # z.B. gpt-5
+    system_prompt_used = Column(Text, nullable=True)  # Effektiver System-Prompt inkl. Template
+    generation_ms = Column(Integer, nullable=True)  # Server-seitige KI-Antwortzeit in ms
+    ai_finish_reason = Column(String(50), nullable=True)  # stop / length / content_filter ...
+    ai_prompt_tokens = Column(Integer, nullable=True)
+    ai_completion_tokens = Column(Integer, nullable=True)
+    ai_reasoning_tokens = Column(Integer, nullable=True)
+    generation_error = Column(Boolean, nullable=True)  # True = Fehlertext oder leere KI-Antwort
+    edit_count = Column(Integer, nullable=True)  # Anzahl gespeicherter Bearbeitungen nach Erstellung
+    last_edited_at = Column(DateTime, nullable=True)
+
     # Beziehung zum Benutzer
     user = relationship("User", back_populates="reports")

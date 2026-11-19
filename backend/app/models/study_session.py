@@ -138,6 +138,18 @@ class StudySession(Base):
     session_type = Column(String(50), nullable=True)  # 'with_ai' oder 'without_ai'
     manual_report_text = Column(Text, nullable=True)  # Manueller Befundtext
 
+    # Erweiterte Erfassung (hinzugefügt 2026-11-19)
+    status = Column(String(20), nullable=True)  # started / completed / cancelled
+    active_time_seconds = Column(Integer, nullable=True)  # total_time_seconds - total_pause_seconds
+    client_metrics = Column(JSON, nullable=True)  # Browser-Zählwerte (Tippen, Einfügen, Tab-Wechsel, Leerlauf)
+    platform_version = Column(String(40), nullable=True)  # Git-Commit der Plattform bei Erfassung
+    # Nachbearbeitung NACH Abschluss der Session (KI-Arm: Session endet mit der Generierung)
+    post_edit_count = Column(Integer, nullable=True)  # Anzahl gespeicherter Bearbeitungen
+    post_edit_seconds = Column(Integer, nullable=True)  # Summe Bearbeitungsdauer (Bearbeiten -> Speichern)
+    final_words_after_edit = Column(Integer, nullable=True)  # Wortzahl nach letzter Bearbeitung
+    last_edit_at = Column(DateTime, nullable=True)
+
     # Beziehungen
     user = relationship("User", backref="study_sessions")
-    report = relationship("Report", backref="study_session")
+    # foreign_keys nötig, weil reports.study_session_id einen zweiten FK-Pfad erzeugt
+    report = relationship("Report", foreign_keys=[report_id], backref="study_session")

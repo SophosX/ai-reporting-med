@@ -30,7 +30,14 @@ from typing import List, Optional
 from ..core.database import get_db
 from ..models.report_model import Report
 from ..schemas.report_schemas import ReportCreate, ReportOut, ReportUpdate, ManualReportCreate
-from ..services.openai_service import get_completion
+from ..services.openai_service import get_completion_with_meta
+from ..services.study_tracking_service import (
+    get_owned_session,
+    find_session_for_report,
+    record_version,
+    update_session_edit_metrics,
+    log_server_event,
+)
 from ..services.word_count_service import update_report_word_metrics, count_words
 from ..core.security import get_current_user_id
 from ..models.user_model import User
@@ -38,6 +45,7 @@ from ..data.templates import get_template_by_id
 from ..services.pdf_service import generate_pdf
 from datetime import datetime, timedelta
 import io
+import logging
 
 router = APIRouter()
 
@@ -79,12 +87,16 @@ async def create_report(
         if template:
             template_text = template.get("text")
 
-    # Generate the report text using OpenAI
-    generated_text = get_completion(
+    # Studien-Session (nur eigene) - wird direkt mit dem Befund verknüpft
+    study_session = get_owned_session(db, report_data.study_session_id, current_user_id)
+
+    # Generate the report text using OpenAI (inkl. Metadaten für die Studie)
+    generated_text, ai_meta = get_completion_with_meta(
         input_text=report_data.input_text,
         template_text=template_text,
         custom_prompt=report_data.custom_prompt
     )
+    generated_at = datetime.utcnow()
 
     # Create new report
     new_report = Report(
@@ -93,7 +105,19 @@ async def create_report(
         report_text=generated_text,
         template_id=report_data.template_id,
         template_text=template_text,
-        case_id=report_data.case_id  # Store case_id for study tracking
+        case_id=report_data.case_id,  # Store case_id for study tracking
+        study_session_id=study_session.id if study_session else None,
+        ai_generated_text=generated_text,
+        ai_provider=ai_meta.get("provider"),
+        ai_model=ai_meta.get("model"),
+        system_prompt_used=ai_meta.get("system_prompt"),
+        generation_ms=ai_meta.get("generation_ms"),
+        ai_finish_reason=ai_meta.get("finish_reason"),
+        ai_prompt_tokens=ai_meta.get("prompt_tokens"),
+        ai_completion_tokens=ai_meta.get("completion_tokens"),
+        ai_reasoning_tokens=ai_meta.get("reasoning_tokens"),
+        generation_error=bool(ai_meta.get("error")),
+        edit_count=0,
     )
     
     # Calculate and store word metrics
@@ -104,7 +128,34 @@ async def create_report(
     db.add(new_report)
     db.commit()
     db.refresh(new_report)
+
+    if study_session:
+        _track_study_creation(db, new_report, study_session, "ai", generated_at, {
+            "generation_ms": ai_meta.get("generation_ms"),
+            "finish_reason": ai_meta.get("finish_reason"),
+            "error": bool(ai_meta.get("error")),
+            "words": new_report.total_words,
+        })
     return new_report
+
+
+def _track_study_creation(db: Session, report: Report, study_session, source: str, created_at, payload: dict):
+    """Erstfassung als Version sichern, Session verknüpfen, Ereignis protokollieren."""
+    try:
+        record_version(db, report, source, report.report_text, session=study_session, created_at=created_at)
+        if study_session.report_id is None:
+            study_session.report_id = report.id
+        if source == "ai" and study_session.first_generation is None:
+            study_session.first_generation = created_at
+        log_server_event(
+            db, report.user_id, "ai_generation" if source == "ai" else "manual_report_saved",
+            session_id=study_session.id, report_id=report.id, payload=payload,
+        )
+        db.commit()
+    except Exception:
+        # Studien-Erfassung darf die Befunderstellung nie blockieren
+        db.rollback()
+        logging.getLogger(__name__).exception("Studien-Erfassung bei Befunderstellung fehlgeschlagen")
 
 
 @router.post("/manual", response_model=ReportOut)
@@ -162,10 +213,20 @@ async def create_manual_report(
     new_report.generated_words = 0  # No AI generation
     new_report.saved_words = 0  # No words saved since it's manual
 
+    # Studien-Session (nur eigene) - wird direkt mit dem Befund verknüpft
+    study_session = get_owned_session(db, report_data.study_session_id, current_user_id)
+    if study_session:
+        new_report.study_session_id = study_session.id
+    new_report.edit_count = 0
+
     # Save to database
     db.add(new_report)
     db.commit()
     db.refresh(new_report)
+
+    if study_session:
+        _track_study_creation(db, new_report, study_session, "manual", new_report.created_at,
+                              {"words": new_report.total_words})
 
     return new_report
 
@@ -288,6 +349,13 @@ async def delete_report(
     if not report:
         raise HTTPException(status_code=404, detail="Bericht nicht gefunden oder nicht autorisiert")
 
+    # Studienbefund: Löschung protokollieren (Versionen bleiben für die Studie erhalten)
+    study_session = find_session_for_report(db, report)
+    if study_session:
+        log_server_event(db, current_user_id, "report_deleted",
+                         session_id=study_session.id, report_id=None,
+                         payload={"deleted_report_id": report.id})
+
     db.delete(report)
     db.commit()
     return None
@@ -338,6 +406,12 @@ async def get_report_pdf(
     }
     
     pdf_bytes = generate_pdf(report_data)
+
+    study_session = find_session_for_report(db, report)
+    if study_session:
+        log_server_event(db, current_user_id, "pdf_downloaded",
+                         session_id=study_session.id, report_id=report.id)
+        db.commit()
     
     # Return PDF as a downloadable file
     headers = {
@@ -389,6 +463,18 @@ async def update_report(
 
     # Store the old report text to calculate what was added
     old_report_text = report.report_text
+
+    # Studienbefund: Stand vor der Bearbeitung sichern, falls noch keine Version existiert
+    # (z.B. Befunde von vor 2026-11-19)
+    study_session = find_session_for_report(db, report)
+    if study_session:
+        from ..models.study_tracking import ReportVersion
+        has_versions = db.query(ReportVersion.id).filter(ReportVersion.report_id == report.id).first()
+        if not has_versions:
+            initial_source = "manual" if report.is_manual else ("ai" if report.ai_generated_text else "pre_tracking")
+            initial_text = report.ai_generated_text if report.ai_generated_text else old_report_text
+            record_version(db, report, initial_source, initial_text, session=study_session,
+                           created_at=report.created_at)
     
     # Update the report text
     report.report_text = report_data.report_text
@@ -421,6 +507,20 @@ async def update_report(
     report.total_words = final_report_words
     report.saved_words = saved_words
     # report.generated_words stays the same (original AI contribution)
+
+    report.edit_count = (report.edit_count or 0) + 1
+    report.last_edited_at = datetime.utcnow()
+
+    # Studienbefund: neue Version + Nachbearbeitungs-Metriken der Session
+    if study_session:
+        record_version(db, report, "edit", report.report_text, session=study_session,
+                       client_edit_ms=report_data.edit_client_ms,
+                       client_meta=report_data.edit_client_meta)
+        update_session_edit_metrics(db, study_session, report)
+        log_server_event(db, current_user_id, "report_edited",
+                         session_id=study_session.id, report_id=report.id,
+                         payload={"edit_client_ms": report_data.edit_client_ms,
+                                  "words": final_report_words})
     
     # Save changes
     db.commit()

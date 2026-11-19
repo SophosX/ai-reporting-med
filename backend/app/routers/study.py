@@ -12,18 +12,22 @@ Session-Management:
 - POST /study/study-session/{id}/timer-start: Timer starten
 - POST /study/study-session/{id}/complete: Session mit Metriken abschließen
 
+- POST /study/study-session/{id}/cancel: Abbruch einer Session markieren
+- POST /study/events: Ereignisse aus dem Browser (nur Zählwerte, keine Texte)
+
 Datenexport:
 - GET /study/study-data/export: Eigene Studiendaten exportieren
 - GET /study/study-data/export-all: Alle Studiendaten exportieren (Admin)
+- GET /study/study-data/export-all.csv: Eine Zeile pro Session für die Statistik (Admin)
 
 Die Studie vergleicht KI-gestützte Befunderstellung ("with_ai") mit
 manueller Befunderstellung ("without_ai") anhand verschiedener Metriken.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional, Union
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from jose import jwt, JWTError
 from pydantic import BaseModel
@@ -31,6 +35,10 @@ from ..core.database import get_db
 from ..models import User, StudySession
 from ..schemas.user_schemas import StudyModeToggle
 from ..core.config import settings
+from ..models.study_tracking import ReportVersion, StudyEvent
+from ..services.study_tracking_service import platform_version, log_server_event
+import csv
+import io
 
 router = APIRouter()
 
@@ -194,7 +202,9 @@ async def start_study_session(
         report_id=None,  # Will be set later when report is created
         session_start=datetime.utcnow(),
         case_id=data.case_id,
-        session_type=data.session_type or "with_ai"
+        session_type=data.session_type or "with_ai",
+        status="started",
+        platform_version=platform_version(),
     )
 
     db.add(study_session)
@@ -286,6 +296,12 @@ async def complete_study_session(
     if not session:
         raise HTTPException(status_code=404, detail="Studiensitzung nicht gefunden")
 
+    # Doppelter Abschluss darf die gemessenen Zeiten nicht überschreiben
+    if session.session_end is not None:
+        log_server_event(db, current_user.id, "duplicate_complete", session_id=session.id)
+        db.commit()
+        return {"message": "Study session already completed"}
+
     # Update report_id if provided
     if data.get("report_id"):
         session.report_id = data.get("report_id")
@@ -322,6 +338,15 @@ async def complete_study_session(
 
     # Quality assessment removed - not needed anymore
 
+    # Netto-Arbeitszeit ohne Pausen
+    if session.total_time_seconds is not None:
+        session.active_time_seconds = max(0, session.total_time_seconds - (session.total_pause_seconds or 0))
+    session.status = "completed"
+    session.platform_version = session.platform_version or platform_version()
+    client_metrics = data.get("client_metrics")
+    if isinstance(client_metrics, dict):
+        session.client_metrics = _sanitize_payload(client_metrics)
+
     # Store complete session data as JSON
     session.session_data = data
 
@@ -338,9 +363,143 @@ async def complete_study_session(
             if session.total_time_seconds is not None:
                 report.study_duration_seconds = session.total_time_seconds
 
+            if report.study_session_id is None:
+                report.study_session_id = session.id
+
     db.commit()
 
     return {"message": "Study session completed successfully"}
+
+@router.post("/study-session/{session_id}/cancel")
+async def cancel_study_session(
+    session_id: int,
+    data: Optional[dict] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Markiert eine Studien-Session als abgebrochen (Teilnehmer hat "Abbrechen" geklickt).
+
+    Abgebrochene Sessions bleiben gespeichert, damit Abbrüche in der Auswertung
+    sichtbar sind und nicht mit liegengelassenen Sessions verwechselt werden.
+    """
+    session = db.query(StudySession).filter(
+        StudySession.id == session_id,
+        StudySession.user_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Studiensitzung nicht gefunden")
+    if session.session_end is None:
+        session.status = "cancelled"
+        client_metrics = (data or {}).get("client_metrics")
+        if isinstance(client_metrics, dict):
+            session.client_metrics = _sanitize_payload(client_metrics)
+    log_server_event(db, current_user.id, "session_cancelled", session_id=session.id)
+    db.commit()
+    return {"message": "Study session cancelled"}
+
+
+_MAX_EVENTS_PER_BATCH = 200
+_MAX_STR_LEN = 100
+
+
+def _sanitize_payload(payload: dict, depth: int = 0) -> dict:
+    """
+    Lässt nur Zahlen, Wahrheitswerte und kurze Zeichenketten zu (keine Textinhalte).
+    Verschachtelung bis Tiefe 2, maximal 60 Schlüssel.
+    """
+    clean = {}
+    for i, (key, value) in enumerate(payload.items()):
+        if i >= 60:
+            break
+        key = str(key)[:50]
+        if isinstance(value, bool) or value is None or isinstance(value, (int, float)):
+            clean[key] = value
+        elif isinstance(value, str):
+            clean[key] = value[:_MAX_STR_LEN]
+        elif isinstance(value, dict) and depth < 2:
+            clean[key] = _sanitize_payload(value, depth + 1)
+    return clean
+
+
+def _parse_client_ts(value) -> Optional[datetime]:
+    """ISO-Zeitstempel aus dem Browser (UTC) -> naive UTC-datetime."""
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        ts = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if ts.tzinfo is not None:
+            ts = ts.astimezone(timezone.utc).replace(tzinfo=None)
+        return ts
+    except ValueError:
+        return None
+
+
+class StudyEventIn(BaseModel):
+    type: str
+    ts: Optional[str] = None
+    session_id: Optional[int] = None
+    report_id: Optional[int] = None
+    payload: Optional[dict] = None
+
+
+class StudyEventBatch(BaseModel):
+    events: List[StudyEventIn]
+
+
+@router.post("/events")
+async def record_study_events(
+    batch: StudyEventBatch,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Nimmt Ereignisse aus dem Browser entgegen (Seite geöffnet, Generieren geklickt,
+    Pause, Tab verlassen, Kopieren ...). Nur für Studienteilnehmer; Sessions und
+    Befunde müssen dem Benutzer gehören. Payloads werden auf Zählwerte reduziert.
+    """
+    if not current_user.study_participant:
+        return {"accepted": 0}
+
+    from ..models.report_model import Report
+
+    events = batch.events[:_MAX_EVENTS_PER_BATCH]
+    session_ids = {e.session_id for e in events if e.session_id}
+    report_ids = {e.report_id for e in events if e.report_id}
+    owned_sessions = set()
+    owned_reports = set()
+    if session_ids:
+        owned_sessions = {
+            sid for (sid,) in db.query(StudySession.id).filter(
+                StudySession.id.in_(session_ids), StudySession.user_id == current_user.id
+            ).all()
+        }
+    if report_ids:
+        owned_reports = {
+            rid for (rid,) in db.query(Report.id).filter(
+                Report.id.in_(report_ids), Report.user_id == current_user.id
+            ).all()
+        }
+
+    now = datetime.utcnow()
+    accepted = 0
+    for e in events:
+        event_type = (e.type or "")[:50]
+        if not event_type:
+            continue
+        db.add(StudyEvent(
+            user_id=current_user.id,
+            study_session_id=e.session_id if e.session_id in owned_sessions else None,
+            report_id=e.report_id if e.report_id in owned_reports else None,
+            event_type=event_type,
+            client_ts=_parse_client_ts(e.ts),
+            server_ts=now,
+            payload=_sanitize_payload(e.payload) if isinstance(e.payload, dict) else None,
+        ))
+        accepted += 1
+    db.commit()
+    return {"accepted": accepted}
+
 
 @router.get("/study-data/export")
 async def export_user_study_data(
@@ -521,9 +680,9 @@ def _build_session_data(session: StudySession, db: Session, include_user_info: b
         }
     
     # Add report data if available (for AI-generated reports)
-    if session.report_id:
-        report = db.query(Report).filter(Report.id == session.report_id).first()
-        if report:
+    report = _find_report_for_session(session, db)
+    if report:
+        if True:
             # Get template content if template was used
             template_content = None
             if report.template_id:
@@ -560,12 +719,28 @@ def _build_session_data(session: StudySession, db: Session, include_user_info: b
                 "report_id": report.id,
                 "is_manual": report.is_manual,
                 "input_text": report.input_text,
+                # Achtung: historischer Schlüssel - enthält den AKTUELLEN Text (nach Bearbeitung)
                 "generated_text": report.report_text,
+                "final_text": report.report_text,
+                "ai_generated_text": report.ai_generated_text,  # unveränderte KI-Rohausgabe (ab 2026-11-19)
                 "input_word_count": input_word_count,
                 "generated_word_count": generated_word_count,
                 "template_id": report.template_id,
                 "template_content": template_content,
-                "created_at": report.created_at.isoformat() if report.created_at else None
+                "created_at": report.created_at.isoformat() if report.created_at else None,
+                "edit_count": report.edit_count,
+                "last_edited_at": report.last_edited_at.isoformat() if report.last_edited_at else None,
+                "ai": {
+                    "provider": report.ai_provider,
+                    "model": report.ai_model,
+                    "generation_ms": report.generation_ms,
+                    "finish_reason": report.ai_finish_reason,
+                    "prompt_tokens": report.ai_prompt_tokens,
+                    "completion_tokens": report.ai_completion_tokens,
+                    "reasoning_tokens": report.ai_reasoning_tokens,
+                    "generation_error": report.generation_error,
+                    "system_prompt_used": report.system_prompt_used,
+                },
             }
     elif session.manual_report_text:
         # For manual sessions without a report_id (stored directly in session)
@@ -580,5 +755,193 @@ def _build_session_data(session: StudySession, db: Session, include_user_info: b
         }
     else:
         session_data["report"] = None
-    
+
+    # Erweiterte Erfassung (ab 2026-11-19)
+    session_data["status"] = session.status or ("completed" if session.session_end else "started")
+    session_data["platform_version"] = session.platform_version
+    session_data["timestamps"]["first_generation"] = (
+        session.first_generation.isoformat() if session.first_generation else None
+    )
+    session_data["durations"]["active_time_seconds"] = session.active_time_seconds
+    session_data["metrics"]["modifications_ratio"] = session.modifications_ratio
+    session_data["post_completion_editing"] = {
+        "edit_count": session.post_edit_count,
+        "edit_seconds": session.post_edit_seconds,
+        "final_words_after_edit": session.final_words_after_edit,
+        "last_edit_at": session.last_edit_at.isoformat() if session.last_edit_at else None,
+    }
+    session_data["client_metrics"] = session.client_metrics
+    session_data["versions"] = [
+        {
+            "version_no": v.version_no,
+            "source": v.source,
+            "report_id": v.report_id,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+            "words": v.words,
+            "chars": v.chars,
+            "chars_added": v.chars_added,
+            "chars_deleted": v.chars_deleted,
+            "similarity_to_original": v.similarity_to_original,
+            "client_edit_ms": v.client_edit_ms,
+            "client_meta": v.client_meta,
+            "text": v.text,
+        }
+        for v in db.query(ReportVersion)
+        .filter(ReportVersion.study_session_id == session.id)
+        .order_by(ReportVersion.report_id, ReportVersion.version_no)
+        .all()
+    ]
+    session_data["events"] = [
+        {
+            "type": e.event_type,
+            "client_ts": e.client_ts.isoformat() if e.client_ts else None,
+            "server_ts": e.server_ts.isoformat() if e.server_ts else None,
+            "report_id": e.report_id,
+            "payload": e.payload,
+        }
+        for e in db.query(StudyEvent)
+        .filter(StudyEvent.study_session_id == session.id)
+        .order_by(StudyEvent.server_ts, StudyEvent.id)
+        .all()
+    ]
+
     return session_data
+
+
+def _find_report_for_session(session: StudySession, db: Session):
+    """Befund einer Session: über study_sessions.report_id oder reports.study_session_id."""
+    from ..models.report_model import Report
+    if session.report_id:
+        report = db.query(Report).filter(Report.id == session.report_id).first()
+        if report:
+            return report
+    return (
+        db.query(Report)
+        .filter(Report.study_session_id == session.id)
+        .order_by(Report.id)
+        .first()
+    )
+
+
+# Spalten des CSV-Exports (eine Zeile pro Session)
+_CSV_COLUMNS = [
+    "session_id", "user_id", "username", "experience_level", "case_id", "session_type", "status",
+    "platform_version", "session_start", "first_generation", "session_end",
+    "total_time_seconds", "pause_count", "total_pause_seconds", "active_time_seconds",
+    "template_used", "report_id", "report_deleted",
+    "input_words", "ai_words", "final_words_at_completion", "final_words_after_edit",
+    "post_edit_count", "post_edit_seconds", "chars_added_vs_original", "chars_deleted_vs_original",
+    "edit_operations", "modifications_ratio",
+    "ai_model", "generation_ms", "ai_finish_reason", "generation_error",
+    "ai_prompt_tokens", "ai_completion_tokens", "ai_reasoning_tokens",
+    "client_keystrokes", "client_chars_typed", "client_chars_removed", "client_paste_count",
+    "client_pasted_chars", "client_hidden_seconds", "client_hidden_count", "client_idle_seconds",
+    "client_first_input_after_s", "client_generate_clicked_after_s", "client_copy_count",
+    "flag_incomplete", "flag_generation_error", "flag_long_hidden", "flag_mostly_pasted",
+    "flag_long_session",
+]
+
+
+def _session_csv_row(session: StudySession, db: Session) -> dict:
+    report = _find_report_for_session(session, db)
+    cm = session.client_metrics or {}
+    deleted = db.query(StudyEvent.id).filter(
+        StudyEvent.study_session_id == session.id, StudyEvent.event_type == "report_deleted"
+    ).first() is not None
+    copy_count = db.query(StudyEvent).filter(
+        StudyEvent.study_session_id == session.id, StudyEvent.event_type == "report_copied"
+    ).count()
+    final_chars = len(report.report_text) if report and report.report_text else 0
+    pasted = cm.get("pasted_chars") or 0
+    hidden_s = round((cm.get("hidden_ms") or 0) / 1000, 1)
+    active = session.active_time_seconds if session.active_time_seconds is not None else session.total_time_seconds
+
+    def iso(dt):
+        return dt.isoformat(sep=" ", timespec="seconds") if dt else ""
+
+    def secs(ms_key):
+        v = cm.get(ms_key)
+        return round(v / 1000, 1) if isinstance(v, (int, float)) else ""
+
+    return {
+        "session_id": session.id,
+        "user_id": session.user_id,
+        "username": session.user.username if session.user else "",
+        "experience_level": session.user.experience_level if session.user else "",
+        "case_id": session.case_id or "",
+        "session_type": session.session_type or "",
+        "status": session.status or ("completed" if session.session_end else "started"),
+        "platform_version": session.platform_version or "",
+        "session_start": iso(session.session_start),
+        "first_generation": iso(session.first_generation),
+        "session_end": iso(session.session_end),
+        "total_time_seconds": session.total_time_seconds,
+        "pause_count": session.pause_count,
+        "total_pause_seconds": session.total_pause_seconds,
+        "active_time_seconds": session.active_time_seconds,
+        "template_used": session.template_used or "",
+        "report_id": report.id if report else "",
+        "report_deleted": int(deleted),
+        "input_words": report.input_words if report else session.input_words,
+        "ai_words": report.generated_words if report and not report.is_manual else 0,
+        "final_words_at_completion": session.final_words,
+        "final_words_after_edit": session.final_words_after_edit,
+        "post_edit_count": session.post_edit_count,
+        "post_edit_seconds": session.post_edit_seconds,
+        "chars_added_vs_original": session.characters_added,
+        "chars_deleted_vs_original": session.characters_deleted,
+        "edit_operations": session.edit_operations,
+        "modifications_ratio": session.modifications_ratio,
+        "ai_model": report.ai_model if report else "",
+        "generation_ms": report.generation_ms if report else "",
+        "ai_finish_reason": report.ai_finish_reason if report else "",
+        "generation_error": int(bool(report.generation_error)) if report and report.generation_error is not None else "",
+        "ai_prompt_tokens": report.ai_prompt_tokens if report else "",
+        "ai_completion_tokens": report.ai_completion_tokens if report else "",
+        "ai_reasoning_tokens": report.ai_reasoning_tokens if report else "",
+        "client_keystrokes": cm.get("keystrokes", ""),
+        "client_chars_typed": cm.get("chars_typed", ""),
+        "client_chars_removed": cm.get("chars_removed", ""),
+        "client_paste_count": cm.get("paste_count", ""),
+        "client_pasted_chars": cm.get("pasted_chars", ""),
+        "client_hidden_seconds": hidden_s if cm else "",
+        "client_hidden_count": cm.get("hidden_count", ""),
+        "client_idle_seconds": secs("idle_ms"),
+        "client_first_input_after_s": secs("first_input_after_ms"),
+        "client_generate_clicked_after_s": secs("generate_clicked_after_ms"),
+        "client_copy_count": copy_count,
+        "flag_incomplete": int(session.session_end is None),
+        "flag_generation_error": int(bool(report and report.generation_error)),
+        "flag_long_hidden": int(hidden_s > 60),
+        "flag_mostly_pasted": int(final_chars > 0 and pasted > 0.5 * final_chars),
+        "flag_long_session": int(active is not None and active > 1200),
+    }
+
+
+@router.get("/study-data/export-all.csv")
+async def export_all_study_data_csv(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    CSV-Export aller Sessions (nur Administratoren): eine Zeile pro Session mit
+    Zeit-, Bearbeitungs-, KI- und Browser-Metriken sowie Qualitäts-Flags.
+    Trennzeichen Semikolon, UTF-8 mit BOM (öffnet direkt in Excel).
+    """
+    if current_user.username not in settings.admin_usernames:
+        raise HTTPException(
+            status_code=403,
+            detail="Nur Administratoren können alle Studiendaten exportieren"
+        )
+    sessions = db.query(StudySession).order_by(StudySession.id).all()
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=_CSV_COLUMNS, delimiter=";", extrasaction="ignore")
+    writer.writeheader()
+    for session in sessions:
+        writer.writerow(_session_csv_row(session, db))
+    filename = f"studiendaten_{datetime.utcnow():%Y%m%d_%H%M}.csv"
+    return Response(
+        content="\ufeff" + buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

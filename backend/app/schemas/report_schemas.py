@@ -12,7 +12,7 @@ für wissenschaftliche Vergleichsstudien.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 
@@ -33,6 +33,7 @@ class ReportCreate(BaseModel):
     template_id: Optional[str] = None
     custom_prompt: Optional[str] = None
     case_id: Optional[str] = None  # Für Studien-Session-Tracking
+    study_session_id: Optional[int] = None  # Verknüpft den Befund sofort mit der Studien-Session
 
 
 class ManualReportCreate(BaseModel):
@@ -50,6 +51,7 @@ class ManualReportCreate(BaseModel):
     report_text: str
     template_id: Optional[str] = None
     case_id: Optional[str] = None
+    study_session_id: Optional[int] = None  # Verknüpft den Befund sofort mit der Studien-Session
 
 
 class ReportUpdate(BaseModel):
@@ -60,8 +62,14 @@ class ReportUpdate(BaseModel):
 
     Attributes:
         report_text (str): Der neue/aktualisierte Befundtext
+        edit_client_ms (int, optional): Browser-gemessene Bearbeitungsdauer
+            (Klick auf "Bearbeiten" bis "Speichern") für die Studie
+        edit_client_meta (dict, optional): Browser-Zählwerte der Bearbeitung
+            (Tastenanschläge, Einfügen ...), keine Textinhalte
     """
     report_text: str
+    edit_client_ms: Optional[int] = None
+    edit_client_meta: Optional[Dict[str, Any]] = None
 
 
 class ReportOut(BaseModel):
